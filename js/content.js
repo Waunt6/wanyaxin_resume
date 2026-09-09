@@ -21,7 +21,7 @@ window.C = {
      logo 放 assets/logos/；没有 logo 的用 mark 兜底（一个墨线字符牌）。 */
   edu: [
     {
-      badge: '本科', tier: '211', logo: 'assets/logos/ustb.png',
+      badge: '本科', tier: '211', logo: 'assets/logos/ustb.webp',
       title: '北京科技大学 · 工业设计',
       meta: '2020.09 – 2024.06',
       rows: [
@@ -32,7 +32,7 @@ window.C = {
       sum: '系统掌握产品从需求挖掘到落地实现的完整思维链路，夯实交互设计、用户研究与产品设计能力；担任学院团委组织部骨干，统筹组织团务相关活动，锻炼组织协调与沟通推进能力；在校期间获得北京市文创设计大赛二等奖、全国大学生节能减排社会实践与科技竞赛国家一等奖、中国大学生计算机设计大赛二等奖等多项竞赛奖项，在跨学科项目中进一步强化跨专业团队协作能力。',
     },
     {
-      badge: '交换', tier: '985', logo: 'assets/logos/scut.png',
+      badge: '交换', tier: '985', logo: 'assets/logos/scut.webp',
       title: '华南理工大学 · 交互设计',
       meta: '2022.09 – 2023.02',
       rows: [
@@ -41,7 +41,7 @@ window.C = {
       sum: '在交换过程中，拓展了技术认知边界，学习移动端开发、虚拟现实、人工智能及服务设计相关知识，拓宽技术认知边界。实操掌握 Android Studio 移动端搭建、Unity VR/AR 基础内容开发技能，实现设计与技术结合落地，同时积累用户服务设计思维，提升智能交互设计实操能力；在校期间获得红棉设计奖设计传达奖。',
     },
     {
-      badge: '硕士', tier: '211', logo: 'assets/logos/ustb.png',
+      badge: '硕士', tier: '211', logo: 'assets/logos/ustb.webp',
       title: '北京科技大学 · 设计学',
       meta: '2024.09 – 2027.06',
       rows: [
@@ -56,19 +56,19 @@ window.C = {
      维度：公司 / 部门 / 时间 / 概述，概述照搬 md 原文。 */
   intern: [
     {
-      badge: 'Keevx', logo: 'assets/logos/baidu.png',
+      badge: 'Keevx', logo: 'assets/logos/baidu.webp',
       title: '百度（MEG）· 产品经理',
       meta: '2025.06 – 2025.11',
       sum: '在百度 Keevx 团队担任产品经理期间，我面向海外市场 AI 数字人视频工具 Keevx，负责用户增长与付费转化相关产品优化。主要方向涵盖视频翻译功能体验优化、海外官网从 0 到 1 建设以及新客转化权益方案设计等，致力于推动产品在海外市场的用户增长与商业化落地。',
     },
     {
-      badge: '理想同学', logo: 'assets/logos/lixiang.png',
+      badge: '理想同学', logo: 'assets/logos/lixiang.webp',
       title: '理想汽车 · AI 产品经理',
       meta: '2025.12 – 2026.03',
       sum: '在理想汽车担任 AI 产品经理期间，我负责车载智能助手「理想同学」在驾驶娱乐场景下的交互体验优化与人机交互评测体系建设。主要方向包括驾驶场景下的信息交互体验重构、自动化评测体系搭建以及人机交互评测数据集构建等，致力于提升车载智能助手的交互质量与评测效率。',
     },
     {
-      badge: '创作者中心', logo: 'assets/logos/kuaishou.png',
+      badge: '创作者中心', logo: 'assets/logos/kuaishou.webp',
       title: '快手 · AI 产品经理',
       meta: '2026.04 – 2026.07',
       sum: '在快手创作者中心担任 AI 产品经理期间，我围绕创作者生态，负责 AIGC 能力在产品核心场景的产品落地，致力于提升内容供给效率与运营配置效率。主要方向涵盖 AI 发布链路优化、创作灵感策略拓展、活动中心改版以及作者圈选 AI 工具搭建等，通过产品手段推动 AI 能力与创作者生态的深度融合。',
@@ -82,14 +82,14 @@ window.C = {
      桌面图标是「先从上到下排满一列、再换下一列」，所以第一列就是 AI 那五个。
      文件夹名写「这是个什么东西」，品牌名留在窗口标题里。
      正文照抄 设计作品_STAR文案汇总.docx 的三段，一个字没删；S / T / A 的标签不显示。
-     img 是文档里那张项目图，转成 assets/projects/*.jpg。 */
+     img 是文档里那张项目图，转成 assets/projects/*.webp。 */
   projects: [
     {
       ch: 'CH 01',
       short: '演唱会票价监测',
       title: 'AI 票务价格监测平台',
       meta: 'AI 协作开发与数据产品',
-      img: 'assets/projects/ticket.jpg',
+      img: 'assets/projects/ticket.webp',
       alt: 'AI 票务价格监测平台 · 项目图',
       p: [
         '二手票务信息分散在不同黄牛维护的图片表格中，格式不统一、价格变化频繁，人工难以持续整理和判断价格走势。',
@@ -103,7 +103,7 @@ window.C = {
       short: '饭撒牌生成器',
       title: 'AI 个性化饭撒牌生成系统',
       meta: 'AI 内容生成与移动端产品',
-      img: 'assets/projects/fansa.jpg',
+      img: 'assets/projects/fansa.webp',
       alt: 'AI 个性化饭撒牌生成系统 · 项目图',
       p: [
         '粉丝为不同成员制作饭撒牌时，存在素材查找困难、生成内容模板化和输出格式不适用等问题；通用 AI 也缺少对饭圈身份、成员特征和饭撒动作规则的理解。',
@@ -117,7 +117,7 @@ window.C = {
       short: '拍照姿势指导',
       title: 'PosePro AI 拍照姿势指导 APP',
       meta: '人工智能与影像交互',
-      img: 'assets/projects/posepro.jpg',
+      img: 'assets/projects/posepro.webp',
       alt: 'PosePro AI 拍照姿势指导 APP · 项目图',
       p: [
         '年轻女性在拍照时常遇到姿势储备不足、现场模仿困难和表现不自信等问题，临时搜索参考也容易打断拍摄节奏。',
@@ -131,7 +131,7 @@ window.C = {
       short: '水墨生成装置',
       title: '水墨呼吸 中国水墨画生成交互装置',
       meta: '生成式艺术与实体交互',
-      img: 'assets/projects/ink.jpg',
+      img: 'assets/projects/ink.webp',
       alt: '水墨呼吸 中国水墨画生成交互装置 · 项目图',
       p: [
         '气韵生动蕴含生命、自然与宇宙观，但概念抽象，普通观众很难通过传统观看方式获得直观、身体化的理解。',
@@ -145,7 +145,7 @@ window.C = {
       short: 'AR 旅游评论',
       title: '基于移动 AR 的旅游评论信息个性化展示设计',
       meta: '本科毕业设计 · 移动增强现实与文旅信息交互',
-      img: 'assets/projects/ar-review.jpg',
+      img: 'assets/projects/ar-review.webp',
       alt: '基于移动 AR 的旅游评论信息个性化展示设计 · 项目图',
       cap: '代表界面 · 南锣鼓巷店铺 AR 标签首页',
       p: [
@@ -161,7 +161,7 @@ window.C = {
       short: '亲子食育卡牌',
       title: 'Bean’s Journey 亲子食育卡牌游戏',
       meta: '教育游戏与实体产品',
-      img: 'assets/projects/bean.jpg',
+      img: 'assets/projects/bean.webp',
       alt: 'Bean’s Journey 亲子食育卡牌游戏 · 项目图',
       p: [
         '6 至 12 岁儿童普遍缺少对食物来源和劳动过程的认识，饮食与购买行为也容易脱离真实生产成本，传统讲授方式参与感有限。',
@@ -175,7 +175,7 @@ window.C = {
       short: '儿童财商 APP',
       title: 'Funkid 儿童青少年财商教育 APP',
       meta: '服务设计与多端交互',
-      img: 'assets/projects/funkid.jpg',
+      img: 'assets/projects/funkid.webp',
       alt: 'Funkid 儿童青少年财商教育 APP · 项目图',
       p: [
         '9 至 15 岁儿童已开始接触零花钱，却容易冲动消费；家长重视财商教育，但缺少系统、可持续且适合亲子共同参与的方法。',
@@ -189,7 +189,7 @@ window.C = {
       short: '宠物转运 APP',
       title: 'Transpet 宠物安置和转运 APP',
       meta: '服务设计与移动端交互',
-      img: 'assets/projects/transpet.jpg',
+      img: 'assets/projects/transpet.webp',
       alt: 'Transpet 宠物安置和转运 APP · 项目图',
       p: [
         '出行需求增长带动宠物安置与转运需求，但现有服务信息分散、办理流程复杂，运输过程不透明，也存在明显的安全焦虑。',
@@ -203,7 +203,7 @@ window.C = {
       short: '书法套装',
       title: '翰墨荷韵 书法套装',
       meta: '文化产品与器物设计',
-      img: 'assets/projects/hanmo.jpg',
+      img: 'assets/projects/hanmo.webp',
       alt: '翰墨荷韵 书法套装 · 项目图',
       p: [
         '传统书画用品常在实用、装饰与文化表达之间彼此割裂，难以同时满足日常书写、艺术陈设和高品质馈赠需求。',
@@ -227,10 +227,10 @@ window.C = {
   ],
 
   /* 06 名片
-     名片和信封都是做好的图，联系方式在图里 —— 改联系方式要重出 assets/namecard.png。
+     名片和信封都是做好的图，联系方式在图里 —— 改联系方式要重出 assets/namecard.webp。
      alt 是给读屏和搜索用的，改图时记得一起改。 */
   card: {
-    img: 'assets/namecard.png',
+    img: 'assets/namecard.webp',
     alt: '万雅欣 Ayla 的名片：电话 18800131866 · 邮箱 wyx18800131@163.com · 微信 wyx1041946042',
     note: '更多故事尚未揭开，可通过名片上的联系方式找到我',
   },

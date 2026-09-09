@@ -51,7 +51,7 @@
 
   const TV_X = 4560, TV_W = 380, TV_H = 419;    // 世界里那台电视（画在 canvas 上）
   const BOOK_X = 5900;
-  /* 地上那本手账本（assets/book.png，棕色外壳的实拍图）。
+  /* 地上那本手账本（assets/book.webp，棕色外壳的实拍图）。
      只给高度，宽度按原图比例算 —— 换图不会变形。小猫高 132，本子比它矮一截。 */
   const BOOK_H = 106, BOOK_W = Math.round(BOOK_H * (324 / 440));
   const CAS_X = 7000;
@@ -77,7 +77,7 @@
      照原比例画出来是一大团没有形状的雾。 */
   const LIGHT = { h: 420, ar: .40 };
   LIGHT.w = LIGHT.h * LIGHT.ar;
-  /* 柱顶那只信封（assets/envelope.png，实拍图，四角就是信封本身，没有白底要抠）。
+  /* 柱顶那只信封（assets/envelope.webp，实拍图，四角就是信封本身，没有白底要抠）。
      只给高度，宽度按原图比例算 —— 换图不会变形。点开它才是名片。 */
   const CARD_H = 68, CARD_W = Math.round(CARD_H * (618 / 420));
   /* 信封中心。原来贴着柱顶（+10 是压进柱头一点），现在整个浮起来一截，
@@ -98,16 +98,16 @@
      全是照片，所以不进像素缓冲，直接画在主画布上（跟电视一样）。
      宽高按原图比例锁死：只给一个边，另一边算出来，换图不会变形。 */
   const AR = {                                   // 原图宽 / 高
-    lamp: 879 / 622,                             // chandelier.png 里灯体那一块
+    lamp: 879 / 622,                             // chandelier.webp 里灯体那一块
     mona: 697 / 1000, veil: 778 / 1000, vase: 626 / 760,
   };
-  const LAMP_SRC = { x: 11, y: 250, w: 879, h: 622 };   // 灯体在 chandelier.png 里的位置（自带的短链条不要）
+  const LAMP_SRC = { x: 11, y: 250, w: 879, h: 622 };   // 灯体在 chandelier.webp 里的位置（自带的短链条不要）
   /* 整组的右边界压在 1356，1440x900 那种笔记本也能把花瓶看全 */
   const ROOM = {
     lamp: { cx: 552, y0: -735, y: -735, w: 205 },   // 吊灯：cx 是中心，y0 是理想高度，y 每次 resize 兜底（见 fitTop）
     art: [                                       // 两幅画竖向中线对齐在 -355
-      { src: 'assets/oil-mona.jpg', x: 680, y: -510, h: 310, ar: AR.mona },
-      { src: 'assets/oil-veil.jpg', x: 922, y: -484, h: 258, ar: AR.veil },
+      { src: 'assets/oil-mona.webp', x: 680, y: -510, h: 310, ar: AR.mona },
+      { src: 'assets/oil-veil.webp', x: 922, y: -484, h: 258, ar: AR.veil },
     ],
     vase: { x: 1148, h: 252 },                   // 底在地面上
   };
@@ -669,12 +669,18 @@
     [...bookTabs.children].forEach((b, k) => b.classList.toggle('on', k === i));
   }
 
+  /* 首屏只用得上房间那几样（吊灯 / 两幅油画 / 百合）。后面几幕的素材先只造壳，
+     src 排进 defer，等第一帧画完再后台预取 —— 不跟首屏抢带宽，
+     等真走到那一幕时通常已经下好了。 */
+  const defer = [];
+  const loadLater = (u) => { const i = new Image(); defer.push(() => { i.src = u; }); return i; };
+
   /* ---------- 电视：雪花 → 开机 → 桌面 → 文件夹 → 弹窗 ---------- */
   const SNOW = ['assets/static1.jpg', 'assets/static2.jpg', 'assets/static3.jpg', 'assets/static4.jpg'];
-  const snowImg = SNOW.map((u) => { const im = new Image(); im.src = u; return im; });
-  const tvImg = new Image(); tvImg.src = 'assets/tv.png';
-  const blissImg = new Image(); blissImg.src = 'assets/bliss.jpg';
-  const SCR = { l: .0903, t: .3430, w: .6336, h: .4711 };   // 屏幕开口在 tv.png 里的位置
+  const snowImg = SNOW.map((u) => loadLater(u));
+  const tvImg = loadLater('assets/tv.webp');
+  const blissImg = loadLater('assets/bliss.webp');
+  const SCR = { l: .0903, t: .3430, w: .6336, h: .4711 };   // 屏幕开口在 tv.webp 里的位置
 
   /* 世界里那台电视：素材是照片，所以直接画在主画布上（不进像素缓冲），
      而且画在小猫之前 —— 小猫从它前面走过 */
@@ -697,8 +703,8 @@
 
   /* ---------- 01 房间：吊灯 / 两幅油画 / 百合 ---------- */
   const loadImg = (u) => { const i = new Image(); i.src = u; return i; };
-  const lampImg = loadImg('assets/chandelier.png');
-  const vaseImg = loadImg('assets/lilies.png');
+  const lampImg = loadImg('assets/chandelier.webp');
+  const vaseImg = loadImg('assets/lilies.webp');
   const artImg = ROOM.art.map((a) => loadImg(a.src));
 
   const ready = (im) => im.complete && im.naturalWidth > 0;
@@ -731,11 +737,11 @@
     }
   }
 
-  const castleImg = loadImg('assets/castle.webp');
-  const pillarImg = loadImg('assets/pillar.webp');
-  const lightImg = loadImg('assets/spotlight.webp');
-  const bookImgW = loadImg('assets/book.png');
-  const envImg = loadImg('assets/envelope.png');
+  const castleImg = loadLater('assets/castle.webp');
+  const pillarImg = loadLater('assets/pillar.webp');
+  const lightImg = loadLater('assets/spotlight.webp');
+  const bookImgW = loadLater('assets/book.webp');
+  const envImg = loadLater('assets/envelope.webp');
 
   /* 地上那本手账本：真实素材，立在地面上（跟城堡 / 柱子一样直接画在主画布，不像素化）。
      捡走之后就不画了（st.book）。宽高按原图比例锁死，换图不会变形。 */
@@ -1169,7 +1175,11 @@
   camXr = Math.round(camX / K) * K; camYr = Math.round(camY / K) * K;
   layer.style.transform = `scale(${SCALE}) translate(${-camXr}px,${-camYr}px)`;
   tip(C.intro.hint);
-  requestAnimationFrame((t) => { last = t; loop(t); });
+  requestAnimationFrame((t) => {
+    last = t; loop(t);
+    /* 首屏已经画出来了，这时候再去取后面几幕的素材 */
+    requestAnimationFrame(() => defer.splice(0).forEach((f) => f()));
+  });
 
   /* 调试（面板不可见时 rAF 会停）：__d.step(秒) / __d.run('kn0') */
   window.__d = {

@@ -50,10 +50,10 @@ button{font-family:inherit}
 }
 /* 一样高不等于一样重：按视觉分量各自微调，让四个标识在卡片上压秤一致。
    理想是实心黑，同高时比谁都重，压小；华工是细笔画的印章＋书法，给多一点。 */
-.tx .org .logo[src$="lixiang.png"]{height:17px}
-.tx .org .logo[src$="scut.png"]{height:27px}
-.tx .org .logo[src$="kuaishou.png"]{height:20px}
-.tx .org .logo[src$="ustb.png"]{height:26px}   /* 和华工同构：印章＋书法，笔画细 */
+.tx .org .logo[src$="lixiang.webp"]{height:17px}
+.tx .org .logo[src$="scut.webp"]{height:27px}
+.tx .org .logo[src$="kuaishou.webp"]{height:20px}
+.tx .org .logo[src$="ustb.webp"]{height:26px}   /* 和华工同构：印章＋书法，笔画细 */
 .tx.on .org .logo{filter:grayscale(0) contrast(1) opacity(1)}
 
 /* 没有 logo 时的兜底：一块墨线字符牌，跟 logo 同高 */
@@ -205,7 +205,7 @@ button{font-family:inherit}
 
 /* ---------- 电视放大（底色沿用三个覆盖层共同的那套） ---------- */
 /* 电视放到「只看得见屏幕 + 一圈机身」的程度：
-   屏幕在 tv.png 里的中心是 (40.71%, 57.86%)，所以纵向按屏幕中心对齐，
+   屏幕在 tv.webp 里的中心是 (40.71%, 57.86%)，所以纵向按屏幕中心对齐，
    横向按机身居中（真机屏幕本来就偏左，右边是旋钮区）。 */
 .tvset{
   --sh:min(80vh, 84vw / 1.2211);          /* 想要的屏幕高度 */
@@ -220,7 +220,7 @@ button{font-family:inherit}
 .tvzoom.on .tvset{transform:translate(-50%,-57.86%)}
 .tvshell{position:relative;z-index:2;height:100%;width:auto;display:block;pointer-events:none}
 
-/* 屏幕开口（贴合 assets/tv.png 里那块透明区域） */
+/* 屏幕开口（贴合 assets/tv.webp 里那块透明区域） */
 .tvscreen{
   position:absolute;z-index:1;
   left:9.03%;top:34.30%;width:63.36%;height:47.11%;
@@ -239,7 +239,7 @@ button{font-family:inherit}
 /* 屏幕里的桌面 */
 .desktop{
   position:absolute;inset:0;opacity:0;pointer-events:none;
-  background:url(../assets/bliss.jpg) center/cover;
+  background:url(../assets/bliss.webp) center/cover;
   transition:opacity .35s .12s;
 }
 .tvscreen.on .desktop{opacity:1}
