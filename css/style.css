@@ -1,0 +1,426 @@
+/* ============================================================
+   万雅欣 · 小猫侦探
+   白纸 / 细墨线 / 像素猫，青色是唯一的高音
+   ============================================================ */
+:root{
+  --ink:#141414;
+  --ink2:#5c5c5c;
+  --mute:#a2a2a2;
+  --line:#e6e6e6;
+  --cyan:#3ddbcb;
+  --deep:#0e9c8e;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:#fdfdfc;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+
+/* ---------- 舞台 ---------- */
+/* 画面不能拖，所以没有 grab / grabbing 那两个手型 */
+#stage{position:fixed;inset:0;overflow:hidden;cursor:default;touch-action:none}
+#stage.hot{cursor:pointer}
+#world{display:block;width:100%;height:100%;image-rendering:pixelated}
+
+#layer{position:absolute;inset:0;transform-origin:0 0;pointer-events:none;will-change:transform}
+/* 世界层只负责显示，点击一律交给下面的 canvas 处理 */
+#layer>*{position:absolute;pointer-events:none}
+
+/* ---------- 世界里的文字块 ---------- */
+.tx{
+  width:620px;                                   /* 概述是整段的，窄了行数爆炸 */
+  opacity:0;transform:translateY(14px);
+  transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1);
+}
+.tx.on{opacity:1;transform:none}
+/* 机构那一行：左边标识，右边身份小牌，中间一条细墨线把两头连起来 */
+.tx .org{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:11px;padding-bottom:9px;border-bottom:1px solid var(--line);
+  min-height:26px;                              /* 有没有 logo，行高都一样 */
+}
+.tx .org .chips{margin-left:auto;display:flex;align-items:center;gap:5px;flex:none}
+
+/* logo 用高度对齐，宽度自适应；再用 max-width 收住理想那种特别扁的 */
+.tx .org .logo{
+  height:22px;max-width:170px;object-fit:contain;object-position:left center;
+  filter:grayscale(1) contrast(.9) opacity(.5);
+  transition:filter .6s ease .3s;               /* 比正文慢半拍，最后才上色 */
+  user-select:none;
+}
+/* 一样高不等于一样重：按视觉分量各自微调，让四个标识在卡片上压秤一致。
+   理想是实心黑，同高时比谁都重，压小；华工是细笔画的印章＋书法，给多一点。 */
+.tx .org .logo[src$="lixiang.png"]{height:17px}
+.tx .org .logo[src$="scut.png"]{height:27px}
+.tx .org .logo[src$="kuaishou.png"]{height:20px}
+.tx .org .logo[src$="ustb.png"]{height:26px}   /* 和华工同构：印章＋书法，笔画细 */
+.tx.on .org .logo{filter:grayscale(0) contrast(1) opacity(1)}
+
+/* 没有 logo 时的兜底：一块墨线字符牌，跟 logo 同高 */
+.tx .org .mark{
+  display:inline-flex;align-items:center;height:22px;padding:0 9px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+  color:var(--ink);border:1px solid var(--ink);border-radius:2px;
+}
+
+.tx .badge{
+  display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  border:1px solid var(--ink);border-radius:999px;padding:3px 10px;
+}
+/* 211 / 985 是补充信息，压成灰的，别跟学历抢 */
+.tx .badge.tier{border-color:var(--mute);color:var(--mute);letter-spacing:.08em}
+.tx h3{margin:0 0 5px;font-size:19px;font-weight:600;letter-spacing:-.01em;line-height:1.4}
+.tx .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--mute);margin-bottom:12px}
+.tx p{margin:0 0 7px;font-size:13.5px;line-height:1.85;color:#3a3a3a}
+.tx p:last-child{margin-bottom:0}
+
+/* 维度行：排名 / 课程 / 方向。左标签固定 34px，右内容自己换行对齐。 */
+.tx .rows{display:grid;grid-template-columns:34px 1fr;gap:5px 12px;margin:0 0 11px}
+.tx .rows dt{
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--mute);
+  line-height:1.85;                             /* 和右边正文同一条基线 */
+}
+.tx .rows dd{margin:0;font-size:12.5px;line-height:1.85;color:#3a3a3a}
+
+/* 概述：整段的，跟上面点状的维度行拉开，用一条极淡的线隔一下 */
+.tx .sum{
+  margin:0;padding-top:11px;border-top:1px solid var(--line);
+  font-size:13px;line-height:1.9;color:#3a3a3a;text-align:justify;
+}
+
+.tx.wide{width:470px}
+.tx.big{width:440px}
+.tx.big h1{margin:0 0 16px;font-size:52px;font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.tx.big p{font-size:15px;line-height:1.95;color:var(--ink2)}
+.tx.big .kicker{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--mute);margin-bottom:18px}
+.tx.big .go{margin-top:22px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--deep)}
+.tx.big .go i{display:inline-block;font-style:normal;animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+
+/* 画框下的小标签 */
+.cap{
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--mute);
+  text-align:center;width:200px;opacity:0;transition:opacity .4s;
+}
+.cap.on{opacity:1}
+.cap b{display:block;font-family:var(--sans);font-size:12.5px;color:var(--ink);letter-spacing:0;margin-bottom:3px}
+
+/* ---------- 书 ---------- */
+.bookzoom .bookwrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.booktip{
+  margin:0;align-self:flex-end;                 /* 靠右，正对着索引贴 */
+  font-size:12.5px;letter-spacing:.02em;color:var(--ink2);
+}
+.booktip i{font-style:normal;color:var(--cyan);margin-right:6px}
+
+.bookzoom .book{
+  position:relative;
+  /* 三个上限一起夹：宽了不超过 1360，窄屏跟着视口，矮屏用 vh 换算（比例 1344/1127） */
+  width:min(1360px,94vw,104vh);
+  aspect-ratio:1344/1127;                 /* 和 journal-*.webp 的裁切框一致，热区百分比才准 */
+  transform:scale(.95);transition:transform .38s cubic-bezier(.2,.85,.25,1);
+  filter:drop-shadow(0 26px 34px rgba(0,0,0,.22));
+}
+.bookzoom.on .book{transform:none}
+.book .spread{display:block;width:100%;height:100%;object-fit:contain}
+
+/* 右侧五个索引贴：图里画好了，这里只叠一层透明热区。
+   悬浮/选中不画框 —— 用一团没有边界的柔光，免得在纸上压出一个方块。 */
+.book .tabs{position:absolute;inset:0}
+.book .tabs button{
+  position:absolute;left:94.4%;width:5.4%;
+  appearance:none;border:0;padding:0;cursor:pointer;
+  background:radial-gradient(closest-side,rgba(61,219,203,.55),rgba(61,219,203,.2) 55%,transparent 80%);
+  opacity:0;transition:opacity .22s;
+}
+.book .tabs button:nth-child(1){top:9.4%;height:10.5%}    /* 旅游 */
+.book .tabs button:nth-child(2){top:24.9%;height:9.3%}    /* 运动 */
+.book .tabs button:nth-child(3){top:40.1%;height:9.0%}    /* 潮流 */
+.book .tabs button:nth-child(4){top:53.3%;height:9.4%}    /* 游戏 */
+.book .tabs button:nth-child(5){top:66.8%;height:9.7%}    /* 影视 */
+.book .tabs button:hover{opacity:1}
+/* 当前这一页不做任何标记 —— 索引贴本身在图里就有颜色，再压一层青色柔光会脏。
+   哪一页是当前页看内容就知道了，书上方那行字负责告诉你索引贴能点。 */
+.book .tabs button:focus-visible{opacity:1;outline:2px solid var(--ink);outline-offset:2px}
+
+/* 手账本比另外两个覆盖层大得多，关闭键挪到右上角，别挤掉书的高度 */
+.bookzoom .closebtn{top:22px;right:26px;bottom:auto;left:auto;transform:none}
+
+/* ---------- 顶栏 ---------- */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:64px;z-index:30;
+  display:flex;align-items:center;padding:0 22px;
+  pointer-events:none;                       /* 只有菜单本身接点击，别挡住世界 */
+  background:linear-gradient(#fdfdfc 45%,rgba(253,253,252,0));
+}
+/* 悬浮的章节菜单：点一下直接空降到那一幕 */
+#chapters{
+  pointer-events:auto;
+  display:flex;gap:2px;margin:0 auto;padding:5px;   /* 顶栏正中 */
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(8px);
+  border:1px solid var(--line);border-radius:999px;
+  box-shadow:0 8px 22px -14px rgba(0,0,0,.4);
+}
+#chapters button{
+  appearance:none;background:none;border:0;cursor:pointer;border-radius:999px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mute);
+  padding:7px 12px;white-space:nowrap;transition:background .22s,color .22s;
+}
+#chapters button:hover{background:#f1f1ef;color:var(--ink)}
+#chapters button.done{color:var(--ink2)}
+#chapters button.on{background:var(--ink);color:#fff}
+#chapters button.on:hover{background:var(--ink)}
+#chapters button i{font-style:normal;color:#cfcfcf;margin-right:6px}
+#chapters button.done i{color:var(--mute)}
+#chapters button.on i{color:var(--cyan)}
+
+/* ---------- 底栏 ---------- */
+#hud{
+  position:fixed;left:0;right:0;bottom:0;height:46px;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;padding:0 26px;
+  background:linear-gradient(rgba(253,253,252,0),#fdfdfc 45%);
+}
+#hud .tip{font-size:12px;color:var(--ink2)}
+#hud .tip.warn{color:#c0392b}
+#hud .count{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--mute)}
+
+/* ---------- 光标提示 ---------- */
+.hint{
+  position:fixed;z-index:35;pointer-events:none;opacity:0;transition:opacity .15s;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  background:var(--ink);color:#fff;padding:4px 8px;border-radius:2px;transform:translate(14px,-50%);
+}
+.hint.on{opacity:1}
+
+/* ---------- 三个覆盖层的共同底子 ---------- */
+.tvzoom,.cardzoom,.bookzoom{
+  position:fixed;inset:0;z-index:60;display:grid;place-items:center;
+  background:rgba(253,253,252,.72);backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.tvzoom.on,.cardzoom.on,.bookzoom.on{opacity:1;pointer-events:auto}
+/* 手账本是实物照片，纯白底会让粉色/米色那两个标签糊掉，底色压暖一点 */
+.bookzoom{background:rgba(240,237,231,.92)}
+
+/* ---------- 电视放大（底色沿用三个覆盖层共同的那套） ---------- */
+/* 电视放到「只看得见屏幕 + 一圈机身」的程度：
+   屏幕在 tv.png 里的中心是 (40.71%, 57.86%)，所以纵向按屏幕中心对齐，
+   横向按机身居中（真机屏幕本来就偏左，右边是旋钮区）。 */
+.tvset{
+  --sh:min(80vh, 84vw / 1.2211);          /* 想要的屏幕高度 */
+  --u:calc(var(--sh) / 100);              /* 屏幕里所有东西的基准单位：1u = 屏幕高度的 1% */
+  position:absolute;left:50%;top:50%;
+  height:calc(var(--sh) / 0.4711);
+  transform:translate(-50%,-57.86%) scale(.96);
+  transform-origin:50% 57.86%;
+  transition:transform .42s cubic-bezier(.2,.85,.25,1);
+  filter:drop-shadow(0 24px 50px rgba(0,0,0,.26));
+}
+.tvzoom.on .tvset{transform:translate(-50%,-57.86%)}
+.tvshell{position:relative;z-index:2;height:100%;width:auto;display:block;pointer-events:none}
+
+/* 屏幕开口（贴合 assets/tv.png 里那块透明区域） */
+.tvscreen{
+  position:absolute;z-index:1;
+  left:9.03%;top:34.30%;width:63.36%;height:47.11%;
+  overflow:hidden;background:#0a0f0e;
+  cursor:url(../assets/cursor.png) 2 2, auto;
+}
+.tvscreen *{cursor:inherit}
+
+.snow{position:absolute;inset:0;background-size:cover;background-position:center;opacity:1;transition:opacity .18s}
+.tvscreen.on .snow{opacity:0}
+
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.go{animation:tvflash .5s ease-out}
+@keyframes tvflash{0%{opacity:0}12%{opacity:1}30%{opacity:.9;transform:scaleY(.02)}46%{opacity:.5;transform:none}100%{opacity:0}}
+
+/* 屏幕里的桌面 */
+.desktop{
+  position:absolute;inset:0;opacity:0;pointer-events:none;
+  background:url(../assets/bliss.jpg) center/cover;
+  transition:opacity .35s .12s;
+}
+.tvscreen.on .desktop{opacity:1}
+/* 只有电视真的开着的时候，桌面才吃点击 —— 否则关掉后它会隔空拦住整屏 */
+.tvzoom.on .tvscreen.on .desktop{pointer-events:auto}
+.desktop::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px);
+}
+
+/* 十个项目：像真的桌面那样「先从上往下排满一列，再换下一列」——
+   所以第一列就是 AI / AR 那五个，最先被看到。
+   尺寸全部用 --u（屏幕高度的 1%），窗口再小也不会挤出屏幕。 */
+.icons{
+  position:absolute;left:calc(var(--u)*3);top:calc(var(--u)*2.5);
+  display:grid;grid-template-rows:repeat(5,auto);grid-auto-flow:column;
+  grid-auto-columns:calc(var(--u)*15);gap:calc(var(--u)*1.4) calc(var(--u)*2);
+}
+.icons button{
+  appearance:none;border:1px solid transparent;background:none;
+  padding:calc(var(--u)*1) calc(var(--u)*.5) calc(var(--u)*.8);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.7);
+}
+.icons img{width:calc(var(--u)*8);height:calc(var(--u)*8);image-rendering:pixelated;display:block}
+.icons span{
+  font-size:calc(var(--u)*1.75);line-height:1.25;color:#fff;text-align:center;
+  text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);
+}
+.icons button:hover span{background:#0507a0;box-shadow:0 0 0 2px #0507a0}
+.icons button:hover{border-color:rgba(255,255,255,.5);border-style:dotted}
+
+/* 蓝白弹窗 */
+.win{
+  position:absolute;left:5%;top:6%;width:90%;height:auto;max-height:88%;
+  background:#c9c9c9;padding:3px;
+  border:2px solid;border-color:#fff #6d6d6d #6d6d6d #fff;
+  box-shadow:3px 3px 0 rgba(0,0,0,.4);
+  display:none;flex-direction:column;
+}
+.win.on{display:flex;animation:winpop .16s ease-out}
+@keyframes winpop{from{transform:scale(.9);opacity:.4}to{transform:none;opacity:1}}
+.win-bar{
+  height:calc(var(--u)*3.4);flex:0 0 auto;background:linear-gradient(90deg,#0507a0,#2a2fbf);
+  display:flex;align-items:center;justify-content:space-between;padding:0 2px 0 7px;
+}
+.win-bar span{font-size:calc(var(--u)*1.7);font-weight:700;color:#fff;letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.win-btns{display:flex;gap:2px;font-style:normal}
+.win-btns b{
+  width:calc(var(--u)*2.7);height:calc(var(--u)*2.4);background:#c9c9c9;
+  border:1px solid;border-color:#fff #444 #444 #fff;
+  font:700 calc(var(--u)*1.4)/calc(var(--u)*2.2) var(--sans);color:#111;text-align:center;
+}
+.win-btns b:last-child:hover{background:#e04040;color:#fff}
+.win-body{
+  flex:1 1 auto;margin-top:3px;background:#fff;
+  border:1px solid;border-color:#6d6d6d #fff #fff #6d6d6d;
+  padding:calc(var(--u)*2.8) calc(var(--u)*3.4);overflow:auto;
+}
+.win-body::-webkit-scrollbar{width:12px;background:#dcdcdc}
+.win-body::-webkit-scrollbar-thumb{background:#c9c9c9;border:1px solid #6d6d6d}
+.win-body h3{margin:0 0 calc(var(--u)*.6);font-size:calc(var(--u)*2.1);font-weight:700;color:#111}
+.win-body .meta{font-family:var(--mono);font-size:calc(var(--u)*1.5);letter-spacing:.06em;color:#666;
+  padding-bottom:calc(var(--u)*1.1);margin-bottom:calc(var(--u)*1.4);border-bottom:1px solid #d5d5d5}
+.win-body p{margin:0 0 calc(var(--u)*1.4);font-size:calc(var(--u)*1.85);line-height:1.8;color:#1a1a1a}
+.win-body .shot{margin:0 0 calc(var(--u)*1.8);text-align:center}
+.win-body .shot img{
+  display:block;margin:0 auto;max-width:100%;
+  max-height:calc(var(--u)*44);width:auto;height:auto;
+  border:1px solid #6d6d6d;background:#fff;
+}
+.win-body .shot figcaption{
+  font-family:var(--mono);font-size:calc(var(--u)*1.4);color:#666;
+  margin-top:calc(var(--u)*.8);letter-spacing:.04em;
+}
+.win-body .kpi{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.7);margin-top:calc(var(--u)*1.7)}
+.win-body .kpi span{font-family:var(--mono);font-size:calc(var(--u)*1.5);color:#0507a0;
+  border:1px solid #0507a0;padding:calc(var(--u)*.6) calc(var(--u)*1.1)}
+
+/* ---------- 名片 ---------- */
+/* 名片是做好的图，联系方式都在图里 —— 这里只负责摆放 */
+.cardzoom .cardwrap{display:flex;flex-direction:column;align-items:center;gap:18px}
+.namecard{
+  display:block;width:min(560px,86vw);height:auto;border-radius:3px;
+  box-shadow:0 40px 70px -45px rgba(0,0,0,.7);
+  transform:scale(.94);transition:transform .4s cubic-bezier(.2,.85,.25,1);
+}
+.cardzoom.on .namecard{transform:none}
+/* 卡片外那一行：不压在名片上，免得盖住联系方式 */
+.cardnote{
+  margin:0;max-width:min(560px,86vw);text-align:center;
+  font-size:13px;line-height:1.7;color:var(--ink2);
+}
+
+.closebtn{
+  position:fixed;bottom:64px;left:50%;transform:translateX(-50%);
+  z-index:5;
+  border:1px solid var(--ink);background:#fff;color:var(--ink);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+  padding:9px 16px;border-radius:2px;cursor:pointer;transition:.18s;
+}
+.closebtn:hover{background:var(--ink);color:#fff}
+
+
+/* ---------- 引导箭头 ---------- */
+.guide{
+  position:fixed;z-index:38;appearance:none;background:none;border:0;padding:0;cursor:pointer;
+  opacity:0;pointer-events:none;transition:opacity .45s;
+  transform:translate(-50%,-50%);
+}
+.guide.on{opacity:1;pointer-events:auto}
+.guide .arrow{
+  width:52px;height:52px;border:1.6px solid var(--ink);border-radius:50%;
+  display:grid;place-items:center;background:#fff;
+  font-size:19px;line-height:1;color:var(--ink);
+  box-shadow:0 0 0 0 rgba(61,219,203,.55);
+  transition:background .2s,color .2s,transform .2s;
+}
+.guide:hover .arrow{background:var(--ink);color:#fff;transform:scale(1.06)}
+.guide.on .arrow{animation:ring 2s ease-out infinite}
+@keyframes ring{
+  0%{box-shadow:0 0 0 0 rgba(61,219,203,.6)}
+  70%{box-shadow:0 0 0 16px rgba(61,219,203,0)}
+  100%{box-shadow:0 0 0 0 rgba(61,219,203,0)}
+}
+.guide em{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  color:var(--ink2);white-space:nowrap;
+}
+.guide.up em{left:100%;bottom:auto;top:50%;transform:translateY(-50%);margin-left:13px}
+.guide.right em{top:100%;margin-top:10px}
+
+.guide.up .arrow{animation:ring 2s ease-out infinite,floatY 1.9s ease-in-out infinite}
+@keyframes floatY{0%,100%{translate:0 0}50%{translate:0 -7px}}
+
+.guide.right .arrow{animation:ring 2s ease-out infinite,floatX 1.9s ease-in-out infinite}
+@keyframes floatX{0%,100%{translate:0 0}50%{translate:7px 0}}
+
+/* 「继续向前」：换幕的那一下不贴着小猫，钉在画面最右侧 ——
+   它不是「走两步」，是「这一段看完了，往下走」，位置上就该和世界里的热点分开。
+   坐标在 placeGuide() 里按视口算，这里只负责别被 .right 的浮动动画带偏。 */
+.guide.end .arrow{animation:ring 2s ease-out infinite}
+
+/* ---------- 小猫头上的气泡 ---------- */
+.bubble{
+  position:fixed;z-index:37;pointer-events:none;
+  opacity:0;transform:translate(-50%,-100%) translateY(6px);
+  transition:opacity .32s ease,transform .32s cubic-bezier(.2,.8,.2,1);
+}
+.bubble.on{opacity:1;transform:translate(-50%,-100%)}
+.bubble span{
+  display:block;position:relative;
+  max-width:280px;padding:10px 14px;
+  background:#fff;border:1.4px solid var(--ink);border-radius:12px;
+  font-size:13px;line-height:1.6;color:var(--ink);white-space:pre-wrap;
+  box-shadow:0 10px 24px -18px rgba(0,0,0,.7);
+}
+/* 尖角：两个三角叠出 1.4px 的描边效果（外层墨色，内层白，往上错 1.4px） */
+.bubble span::before,.bubble span::after{
+  content:"";position:absolute;top:100%;left:50%;translate:-50% 0;
+  border:8px solid transparent;border-bottom:0;
+}
+.bubble span::before{border-top-color:var(--ink)}
+.bubble span::after{border-top-color:#fff;translate:-50% -1.4px}
+
+/* ---------- 进城堡的 loading ---------- */
+.loading{
+  position:fixed;inset:0;z-index:70;display:grid;place-items:center;
+  background:#fdfdfc;opacity:0;pointer-events:none;transition:opacity .38s;
+}
+.loading.on{opacity:1;pointer-events:auto}
+.lbox{display:flex;flex-direction:column;align-items:center;gap:18px}
+.lbox .ld{
+  width:7px;height:7px;border-radius:50%;background:var(--ink);display:inline-block;
+  animation:blip 1.05s ease-in-out infinite;
+}
+.lbox{flex-direction:row;flex-wrap:wrap;justify-content:center;max-width:260px}
+.lbox .ld:nth-child(2){animation-delay:.16s}
+.lbox .ld:nth-child(3){animation-delay:.32s}
+.lbox p{flex-basis:100%;text-align:center;margin:16px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--mute)}
+@keyframes blip{0%,100%{opacity:.18;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}}
+
+/* 电视放大时关闭键挪到右上角，别压住机身 */
+.tvzoom .closebtn{top:22px;right:26px;bottom:auto;left:auto;transform:none}
