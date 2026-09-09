@@ -377,12 +377,6 @@
     spots.length = 0;
     const add = (o) => { o.live = o.live || (() => true); spots.push(o); };
 
-    // 房间里的两幅画（只在绳子还没掉下来时可点）
-    ROOM.art.forEach((f, i) => add({
-      id: 'fr' + i, shape: 'rect', x: f.x, y: f.y, w: f.w, h: f.h, label: '看看这幅',
-      live: () => !st.started,
-      act: () => { document.getElementById('cap' + i).classList.add('on'); ropeTimer = setTimeout(dropRope, 900); },
-    }));
 
     // 绳结：只有小猫正停在它那一档时亮
     KNOT_Y.forEach((y, i) => add({
