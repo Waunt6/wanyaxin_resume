@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>万雅欣 Ayla · 小猫侦探</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 
@@ -34,25 +34,23 @@
   </div>
 </div>
 
-<div id="tvzoom" class="tvzoom">
-  <div class="tvset">
-    <div class="tvscreen" id="tvScreen">
-      <div class="snow" id="tvSnow"></div>
-      <div class="desktop" id="desktop">
-        <div class="icons" id="tvIcons"></div>
-        <div class="win" id="tvWin">
-          <div class="win-bar">
-            <span id="winTitle"></span>
-            <i class="win-btns"><b>_</b><b>□</b><b id="winClose">✕</b></i>
-          </div>
-          <div class="win-body" id="winBody"></div>
-        </div>
-      </div>
-      <div class="flash" id="tvFlash"></div>
+<canvas id="xBase"></canvas>
+<canvas id="xFx"></canvas>
+<div id="xDesk" class="xdesk">
+  <div class="xfolders" id="xFolders"></div>
+  <button class="xdesk-next" id="xDeskClose" aria-label="继续向前">
+    <span class="arrow">→</span><em>继续向前</em>
+  </button>
+</div>
+<!-- 弹窗放在桌面外面：桌面压在顶栏下面，弹窗要盖在顶栏上面，不能共用一个层叠上下文 -->
+<div class="xdetail" id="xDetail">
+  <div class="xwin">
+    <div class="xwin-bar">
+      <span id="xWinTitle"></span>
+      <i class="xwin-btns"><b>_</b><b>□</b><b id="xDetailClose">✕</b></i>
     </div>
-    <img class="tvshell" src="assets/tv.webp" alt="">
+    <div class="xwin-body" id="xDetailBody"></div>
   </div>
-  <button class="closebtn" id="tvClose">关掉电视 ✕</button>
 </div>
 
 <div id="bookzoom" class="bookzoom">
@@ -76,6 +74,6 @@
 
 <script src="js/cat.js?v=5"></script>
 <script src="js/content.js"></script>
-<script src="js/app.js"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>

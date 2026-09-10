@@ -18,7 +18,7 @@ button{font-family:inherit}
 
 /* ---------- 舞台 ---------- */
 /* 画面不能拖，所以没有 grab / grabbing 那两个手型 */
-#stage{position:fixed;inset:0;overflow:hidden;cursor:default;touch-action:none}
+#stage{position:fixed;inset:0;overflow:hidden;cursor:default;touch-action:none;z-index:10}
 #stage.hot{cursor:pointer}
 #world{display:block;width:100%;height:100%;image-rendering:pixelated}
 
@@ -193,130 +193,128 @@ button{font-family:inherit}
 }
 .hint.on{opacity:1}
 
-/* ---------- 三个覆盖层的共同底子 ---------- */
-.tvzoom,.cardzoom,.bookzoom{
+/* ---------- 覆盖层的共同底子 ---------- */
+.cardzoom,.bookzoom{
   position:fixed;inset:0;z-index:60;display:grid;place-items:center;
   background:rgba(253,253,252,.72);backdrop-filter:blur(3px);
   opacity:0;pointer-events:none;transition:opacity .3s;
 }
-.tvzoom.on,.cardzoom.on,.bookzoom.on{opacity:1;pointer-events:auto}
-/* 手账本是实物照片，纯白底会让粉色/米色那两个标签糊掉，底色压暖一点 */
+.cardzoom.on,.bookzoom.on{opacity:1;pointer-events:auto}
 .bookzoom{background:rgba(240,237,231,.92)}
 
-/* ---------- 电视放大（底色沿用三个覆盖层共同的那套） ---------- */
-/* 电视放到「只看得见屏幕 + 一圈机身」的程度：
-   屏幕在 tv.webp 里的中心是 (40.71%, 57.86%)，所以纵向按屏幕中心对齐，
-   横向按机身居中（真机屏幕本来就偏左，右边是旋钮区）。 */
-.tvset{
-  --sh:min(80vh, 84vw / 1.2211);          /* 想要的屏幕高度 */
-  --u:calc(var(--sh) / 100);              /* 屏幕里所有东西的基准单位：1u = 屏幕高度的 1% */
-  position:absolute;left:50%;top:50%;
-  height:calc(var(--sh) / 0.4711);
-  transform:translate(-50%,-57.86%) scale(.96);
-  transform-origin:50% 57.86%;
-  transition:transform .42s cubic-bezier(.2,.85,.25,1);
-  filter:drop-shadow(0 24px 50px rgba(0,0,0,.26));
-}
-.tvzoom.on .tvset{transform:translate(-50%,-57.86%)}
-.tvshell{position:relative;z-index:2;height:100%;width:auto;display:block;pointer-events:none}
+/* ---------- 展开层：粒子 + 底图 ----------
+   只铺到地面线为止 —— 相当于给小猫换了张背景，地面和小猫照常画在它上面。
+   高度 --xh 由 JS 按「地面在屏幕上的 Y」算出来；z-index 压在 #stage(10) 下面，
+   所以世界画布（小猫 / 地面线）盖在底图之上，底下那条白地照旧。 */
+#xBase,#xFx{position:fixed;left:0;top:0;width:100%;height:var(--xh,100%);display:none;z-index:5}
+#xFx{z-index:6}
+#xBase.on,#xFx.on{display:block}
 
-/* 屏幕开口（贴合 assets/tv.webp 里那块透明区域） */
-.tvscreen{
-  position:absolute;z-index:1;
-  left:9.03%;top:34.30%;width:63.36%;height:47.11%;
-  overflow:hidden;background:#0a0f0e;
+/* ---------- 展开后的文件夹桌面 ---------- */
+/* 浮在 #stage 上面（不挡小猫，小猫在地面线附近），压在顶栏/底栏下面 */
+.xdesk{
+  position:fixed;left:0;top:0;width:100%;height:var(--xh,100%);z-index:20;
+  opacity:0;pointer-events:none;transition:opacity .26s;
   cursor:url(../assets/cursor.png) 2 2, auto;
 }
-.tvscreen *{cursor:inherit}
+.xdesk *{cursor:inherit}
+.xdesk.on{opacity:1;pointer-events:auto}
 
-.snow{position:absolute;inset:0;background-size:cover;background-position:center;opacity:1;transition:opacity .18s}
-.tvscreen.on .snow{opacity:0}
-
-.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-.flash.go{animation:tvflash .5s ease-out}
-@keyframes tvflash{0%{opacity:0}12%{opacity:1}30%{opacity:.9;transform:scaleY(.02)}46%{opacity:.5;transform:none}100%{opacity:0}}
-
-/* 屏幕里的桌面 */
-.desktop{
-  position:absolute;inset:0;opacity:0;pointer-events:none;
-  background:url(../assets/bliss.webp) center/cover;
-  transition:opacity .35s .12s;
+/* 九个项目：像真桌面那样先从上往下排满一列，再换下一列 */
+.xfolders{
+  position:absolute;left:0;right:0;top:0;
+  padding:max(40px,6vh) 4vw 0;
+  display:grid;grid-template-rows:repeat(3,auto);grid-auto-flow:column;
+  grid-auto-columns:min(178px,23vw);gap:18px 10px;
+  justify-content:center;
 }
-.tvscreen.on .desktop{opacity:1}
-/* 只有电视真的开着的时候，桌面才吃点击 —— 否则关掉后它会隔空拦住整屏 */
-.tvzoom.on .tvscreen.on .desktop{pointer-events:auto}
-.desktop::after{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(180deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px);
-}
-
-/* 十个项目：像真的桌面那样「先从上往下排满一列，再换下一列」——
-   所以第一列就是 AI / AR 那五个，最先被看到。
-   尺寸全部用 --u（屏幕高度的 1%），窗口再小也不会挤出屏幕。 */
-.icons{
-  position:absolute;left:calc(var(--u)*3);top:calc(var(--u)*2.5);
-  display:grid;grid-template-rows:repeat(5,auto);grid-auto-flow:column;
-  grid-auto-columns:calc(var(--u)*15);gap:calc(var(--u)*1.4) calc(var(--u)*2);
-}
-.icons button{
+.xfolders button{
   appearance:none;border:1px solid transparent;background:none;
-  padding:calc(var(--u)*1) calc(var(--u)*.5) calc(var(--u)*.8);
-  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.7);
+  padding:8px 5px 7px;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
 }
-.icons img{width:calc(var(--u)*8);height:calc(var(--u)*8);image-rendering:pixelated;display:block}
-.icons span{
-  font-size:calc(var(--u)*1.75);line-height:1.25;color:#fff;text-align:center;
+.xfolders img{
+  width:clamp(52px,10vh,92px);height:clamp(52px,10vh,92px);
+  image-rendering:pixelated;display:block;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.35));
+}
+.xfolders span{
+  font-size:clamp(12px,1.85vh,16px);line-height:1.3;color:#fff;text-align:center;
   text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);
+  padding:1px 3px;
 }
-.icons button:hover span{background:#0507a0;box-shadow:0 0 0 2px #0507a0}
-.icons button:hover{border-color:rgba(255,255,255,.5);border-style:dotted}
+.xfolders button:hover{border-color:rgba(255,255,255,.5);border-style:dotted}
+.xfolders button:hover span{background:#0507a0;box-shadow:0 0 0 2px #0507a0}
 
-/* 蓝白弹窗 */
-.win{
-  position:absolute;left:5%;top:6%;width:90%;height:auto;max-height:88%;
+/* 项目详情：还是那个蓝白弹窗。它是 body 的直接孩子，不在 .xdesk 里 ——
+   桌面要压在顶栏(30)下面，弹窗要盖在顶栏上面，共用一个层叠上下文就做不到。 */
+.xdetail{
+  position:fixed;left:0;top:0;width:100%;height:var(--xh,100%);z-index:55;
+  display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);
+  cursor:url(../assets/cursor.png) 2 2, auto;
+}
+.xdetail *{cursor:inherit}
+.xdetail.on{display:flex}
+.xwin{
+  width:min(760px,88%);max-height:88%;
   background:#c9c9c9;padding:3px;
   border:2px solid;border-color:#fff #6d6d6d #6d6d6d #fff;
   box-shadow:3px 3px 0 rgba(0,0,0,.4);
-  display:none;flex-direction:column;
+  display:flex;flex-direction:column;min-height:0;
+  animation:xwinpop .16s ease-out;
 }
-.win.on{display:flex;animation:winpop .16s ease-out}
-@keyframes winpop{from{transform:scale(.9);opacity:.4}to{transform:none;opacity:1}}
-.win-bar{
-  height:calc(var(--u)*3.4);flex:0 0 auto;background:linear-gradient(90deg,#0507a0,#2a2fbf);
-  display:flex;align-items:center;justify-content:space-between;padding:0 2px 0 7px;
+@keyframes xwinpop{from{transform:scale(.9);opacity:.4}to{transform:none;opacity:1}}
+.xwin-bar{
+  height:26px;flex:0 0 auto;background:linear-gradient(90deg,#0507a0,#2a2fbf);
+  display:flex;align-items:center;justify-content:space-between;padding:0 2px 0 8px;
 }
-.win-bar span{font-size:calc(var(--u)*1.7);font-weight:700;color:#fff;letter-spacing:.02em;white-space:nowrap;overflow:hidden}
-.win-btns{display:flex;gap:2px;font-style:normal}
-.win-btns b{
-  width:calc(var(--u)*2.7);height:calc(var(--u)*2.4);background:#c9c9c9;
+.xwin-bar span{font-size:13px;font-weight:700;color:#fff;letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.xwin-btns{display:flex;gap:2px;font-style:normal}
+.xwin-btns b{
+  width:21px;height:19px;background:#c9c9c9;
   border:1px solid;border-color:#fff #444 #444 #fff;
-  font:700 calc(var(--u)*1.4)/calc(var(--u)*2.2) var(--sans);color:#111;text-align:center;
+  font:700 11px/17px var(--sans);color:#111;text-align:center;
 }
-.win-btns b:last-child:hover{background:#e04040;color:#fff}
-.win-body{
-  flex:1 1 auto;margin-top:3px;background:#fff;
+.xwin-btns b:last-child:hover{background:#e04040;color:#fff}
+.xwin-body{
+  flex:1 1 auto;min-height:0;margin-top:3px;background:#fff;
   border:1px solid;border-color:#6d6d6d #fff #fff #6d6d6d;
-  padding:calc(var(--u)*2.8) calc(var(--u)*3.4);overflow:auto;
+  padding:22px 26px;overflow:auto;
 }
-.win-body::-webkit-scrollbar{width:12px;background:#dcdcdc}
-.win-body::-webkit-scrollbar-thumb{background:#c9c9c9;border:1px solid #6d6d6d}
-.win-body h3{margin:0 0 calc(var(--u)*.6);font-size:calc(var(--u)*2.1);font-weight:700;color:#111}
-.win-body .meta{font-family:var(--mono);font-size:calc(var(--u)*1.5);letter-spacing:.06em;color:#666;
-  padding-bottom:calc(var(--u)*1.1);margin-bottom:calc(var(--u)*1.4);border-bottom:1px solid #d5d5d5}
-.win-body p{margin:0 0 calc(var(--u)*1.4);font-size:calc(var(--u)*1.85);line-height:1.8;color:#1a1a1a}
-.win-body .shot{margin:0 0 calc(var(--u)*1.8);text-align:center}
-.win-body .shot img{
-  display:block;margin:0 auto;max-width:100%;
-  max-height:calc(var(--u)*44);width:auto;height:auto;
-  border:1px solid #6d6d6d;background:#fff;
+.xwin-body::-webkit-scrollbar{width:12px;background:#dcdcdc}
+.xwin-body::-webkit-scrollbar-thumb{background:#c9c9c9;border:1px solid #6d6d6d}
+.xwin-body h3{margin:0 0 5px;font-size:17px;font-weight:700;color:#111}
+.xwin-body .xmeta{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#666;
+  padding-bottom:9px;margin-bottom:12px;border-bottom:1px solid #d5d5d5}
+.xwin-body p{margin:0 0 11px;font-size:14px;line-height:1.8;color:#1a1a1a}
+.xwin-body .xshot{margin:0 0 15px;text-align:center}
+.xwin-body .xshot img{display:block;margin:0 auto;max-width:100%;max-height:40vh;width:auto;height:auto;
+  border:1px solid #6d6d6d;background:#fff}
+.xwin-body .xshot figcaption{font-family:var(--mono);font-size:11px;color:#666;margin-top:7px;letter-spacing:.04em}
+.xwin-body .xkpi{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.xwin-body .xkpi span{font-family:var(--mono);font-size:11px;color:#0507a0;
+  border:1px solid #0507a0;padding:5px 9px}
+
+/* 和世界里 guideDir==='end' 那个前进箭头落在同一个位置：右边缘往里一点、竖直居中 */
+.xdesk-next{
+  position:fixed;right:70px;top:50%;z-index:2;
+  appearance:none;background:none;border:0;padding:0;cursor:pointer;
+  transform:translateY(-50%);
 }
-.win-body .shot figcaption{
-  font-family:var(--mono);font-size:calc(var(--u)*1.4);color:#666;
-  margin-top:calc(var(--u)*.8);letter-spacing:.04em;
+.xdesk-next .arrow{
+  width:52px;height:52px;border:1.6px solid var(--ink);border-radius:50%;
+  display:grid;place-items:center;background:#fff;
+  font-size:19px;line-height:1;color:var(--ink);
+  box-shadow:0 0 0 0 rgba(61,219,203,.55);
+  transition:background .2s,color .2s,transform .2s;
+  animation:ring 2s ease-out infinite;
 }
-.win-body .kpi{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.7);margin-top:calc(var(--u)*1.7)}
-.win-body .kpi span{font-family:var(--mono);font-size:calc(var(--u)*1.5);color:#0507a0;
-  border:1px solid #0507a0;padding:calc(var(--u)*.6) calc(var(--u)*1.1)}
+.xdesk-next:hover .arrow{background:var(--ink);color:#fff;transform:scale(1.06)}
+.xdesk-next em{
+  position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:10px;
+  font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  color:#fff;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
 
 /* ---------- 名片 ---------- */
 /* 名片是做好的图，联系方式都在图里 —— 这里只负责摆放 */
@@ -421,6 +419,3 @@ button{font-family:inherit}
 .lbox .ld:nth-child(3){animation-delay:.32s}
 .lbox p{flex-basis:100%;text-align:center;margin:16px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--mute)}
 @keyframes blip{0%,100%{opacity:.18;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}}
-
-/* 电视放大时关闭键挪到右上角，别压住机身 */
-.tvzoom .closebtn{top:22px;right:26px;bottom:auto;left:auto;transform:none}

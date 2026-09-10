@@ -49,7 +49,7 @@
   const STEP_MARK = (i) => ST_X + SW * i + STEP_PAD;
   const STEP_STOP = (i) => STEP_MARK(i) - CW / 2;
 
-  const TV_X = 4560, TV_W = 380, TV_H = 419;    // 世界里那台电视（画在 canvas 上）
+  const EXPAND_X = 4560;                          // 展开热点的世界 X 坐标
   const BOOK_X = 5900;
   /* 地上那本手账本（assets/book.webp，棕色外壳的实拍图）。
      只给高度，宽度按原图比例算 —— 换图不会变形。小猫高 132，本子比它矮一截。 */
@@ -142,7 +142,13 @@
   const guideEl = document.getElementById('guide');
   const loadEl = document.getElementById('loading');
   const loadTxt = document.getElementById('loadingTxt');
-  const tvzoom = document.getElementById('tvzoom');
+  const xBase = document.getElementById('xBase'), xbCtx = xBase.getContext('2d');
+  const xFx   = document.getElementById('xFx'),   xfCtx = xFx.getContext('2d');
+  const xDesk  = document.getElementById('xDesk');
+  const xFolders = document.getElementById('xFolders');
+  const xDetail  = document.getElementById('xDetail');
+  const xDetailBody = document.getElementById('xDetailBody');
+  const xWinTitle = document.getElementById('xWinTitle');
   const bookzoom = document.getElementById('bookzoom');
   const bookTabs = document.getElementById('bookTabs');
   const cardzoom = document.getElementById('cardzoom');
@@ -165,7 +171,7 @@
   const st = {
     phase: 'room', started: false, drop: 0, dropping: false,
     edu: -1, intern: -1, tab: 0, top: false,
-    tvSeen: 0, tvOn: false, book: false, card: false, inCastle: false,
+    xSeen: false, xOpen: false, xBusy: false, book: false, card: false, inCastle: false,
   };
   const doneCh = new Set();
 
@@ -399,11 +405,15 @@
       act: () => step(i),
     }));
 
-    // 电视（世界里就一台，屏幕是雪花的）
+    // 展开热点（地面上的光点）
     add({
-      id: 'tv', shape: 'rect', x: TV_X - TV_W / 2, y: LV2 - TV_H, w: TV_W, h: TV_H,
-      label: '打开电视', live: () => st.phase === 'tv', mark: true,
-      act: () => goTo(TV_X - TV_W / 2 - CW - 40, openTV),
+      id: 'xspot', shape: 'circle', x: EXPAND_X, r: 20,
+      /* 光点浮在半空、大约落在画面竖直中线上。地面永远钉在画面 GROUND_A 处，
+         所以从地面往上抬 (GROUND_A - .5) 个 viewH 就是正中 —— 用取值器实时算，
+         换窗口大小它也一直在中线上。 */
+      get y() { return LV2 - (GROUND_A - .5) * viewH; },
+      label: '点一下试试', live: () => st.phase === 'tv' && !st.xOpen,
+      act: () => goTo(EXPAND_X - CW - 30, startExpand),
     });
 
     // 书
@@ -612,10 +622,9 @@
   function toTV() {
     ['in0', 'in1', 'in2'].forEach(hide);
     st.phase = 'tv'; paintChapters();
-    goTo(TV_X - 420, () => {
-      tip('前面有台坏掉的电视 —— 点一下试试');
-      showBubble('咦？这里有个电视，看看里边有什么吧～');
-      /* 往下一幕的箭头等看完电视再出（见 closeOverlay） */
+    goTo(EXPAND_X - 420, () => {
+      tip('前面半空有个光点 —— 点一下试试');
+      showBubble('这是什么，我们来点一下吧！');
     });
   }
 
@@ -675,31 +684,217 @@
   const defer = [];
   const loadLater = (u) => { const i = new Image(); defer.push(() => { i.src = u; }); return i; };
 
-  /* ---------- 电视：雪花 → 开机 → 桌面 → 文件夹 → 弹窗 ---------- */
-  const SNOW = ['assets/static1.jpg', 'assets/static2.jpg', 'assets/static3.jpg', 'assets/static4.jpg'];
-  const snowImg = SNOW.map((u) => loadLater(u));
-  const tvImg = loadLater('assets/tv.webp');
+  /* ---------- 展开效果：粒子碎片 → 全屏 Bliss → 文件夹 ---------- */
   const blissImg = loadLater('assets/bliss.webp');
-  const SCR = { l: .0903, t: .3430, w: .6336, h: .4711 };   // 屏幕开口在 tv.webp 里的位置
+  /* 闪亮块只用高饱和的青蓝色：既呼应全站的青色高音，也不会在白底和蓝天上叠成灰。 */
+  const XPALETTE = ['#21dff3','#08bff5','#009bea','#0878e8','#2460df','#3f51d7'];
+  const XCFG = { size:10, spread:760, burn:180, density:3, noise:30 };
+  let xGrid = null, xRaf = 0;
 
-  /* 世界里那台电视：素材是照片，所以直接画在主画布上（不进像素缓冲），
-     而且画在小猫之前 —— 小猫从它前面走过 */
-  function drawWorldTV() {
-    const x = (TV_X - TV_W / 2 - camXr) * SCALE, y = (LV2 - TV_H - camYr) * SCALE;
-    const w = TV_W * SCALE, h = TV_H * SCALE;
-    if (x > W + 20 || x + w < -20) return;
-    const sx = x + w * SCR.l, sy = y + h * SCR.t, sw = w * SCR.w, sh = h * SCR.h;
-    const src = st.tvOn ? blissImg : snowImg[snowI];
-    if (src.complete && src.naturalWidth) {
-      ctx.save();
-      ctx.beginPath(); ctx.rect(sx, sy, sw, sh); ctx.clip();
-      ctx.drawImage(src, sx, sy, sw, sh);
-      ctx.fillStyle = 'rgba(0,0,0,.18)';
-      for (let yy = 0; yy < sh; yy += 3) ctx.fillRect(sx, sy + yy, sw, 1);
-      ctx.restore();
-    }
-    if (tvImg.complete && tvImg.naturalWidth) ctx.drawImage(tvImg, x, y, w, h);
+  /* 展开层只铺到地面线为止 —— 地面(LV2)在屏幕上的 Y 就是它的高度。
+     底图画布和文件夹桌面共用这个高度（CSS 变量 --xh），所以小猫和地面
+     照常露在外面，看上去只是背景换了。 */
+  function xSyncRegion() {
+    const h = Math.max(120, Math.round((LV2 - camYr) * SCALE));
+    document.documentElement.style.setProperty('--xh', h + 'px');
+    return h;
   }
+
+  function xBuildGrid(ox, oy) {
+    const cW = innerWidth, cH = xSyncRegion();
+    if (!cW || !cH) { xGrid = { n:0 }; return; }
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    for (const c of [xBase, xFx]) {
+      c.width = Math.round(cW * dpr); c.height = Math.round(cH * dpr);
+      c.style.width = cW + 'px'; c.style.height = cH + 'px';
+    }
+    xfCtx.imageSmoothingEnabled = false;
+    const S = Math.max(2, Math.round(XCFG.size * dpr));
+    const D = S + 1;
+    const cols = Math.ceil(xBase.width / S), rows = Math.ceil(xBase.height / S);
+    const n = cols * rows;
+    const off = document.createElement('canvas');
+    off.width = xBase.width; off.height = xBase.height;
+    const octx = off.getContext('2d');
+    octx.imageSmoothingQuality = 'high';
+    const sc = Math.max(xBase.width / blissImg.naturalWidth, xBase.height / blissImg.naturalHeight);
+    const dw = blissImg.naturalWidth * sc, dh = blissImg.naturalHeight * sc;
+    octx.drawImage(blissImg, (xBase.width - dw) / 2, (xBase.height - dh) / 2, dw, dh);
+    const cx = ox * dpr, cy = oy * dpr;
+    const maxD = Math.max(Math.hypot(cx, cy), Math.hypot(xBase.width - cx, cy),
+                          Math.hypot(cx, xBase.height - cy), Math.hypot(xBase.width - cx, xBase.height - cy));
+    const noise = xMakeNoise();
+    const freq = 3.2 / Math.max(cols, rows), amp = XCFG.noise / 100;
+    const tOn = new Float32Array(n);
+    let tMax = 0;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const d = Math.hypot(c * S + S/2 - cx, r * S + S/2 - cy) / maxD;
+      const nz = noise(c * freq, r * freq) * .68 + noise(c * freq * 2.7, r * freq * 2.7) * .32;
+      const dd = Math.max(0, d + (nz - .5) * 2 * amp);
+      const v = dd * XCFG.spread + Math.random() * Math.random() * XCFG.burn * .9;
+      tOn[r * cols + c] = v;
+      if (v > tMax) tMax = v;
+    }
+    const order = new Uint32Array(n);
+    for (let i = 0; i < n; i++) order[i] = i;
+    Array.prototype.sort.call(order, (a, b) => tOn[a] - tOn[b]);
+    const orderRev = Uint32Array.from(order).reverse();
+    xGrid = { n, cols, rows, S, D, tOn, tMax, order, orderRev, off };
+  }
+
+  function xMakeNoise() {
+    const N = 1024, p = new Float32Array(N);
+    for (let i = 0; i < N; i++) p[i] = Math.random();
+    const at = (x, y) => p[(((x * 73856093) ^ (y * 19349663)) >>> 0) % N];
+    const sm = t => t * t * (3 - 2 * t);
+    return (x, y) => {
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const fx = sm(x - x0), fy = sm(y - y0);
+      const a = at(x0, y0), b = at(x0 + 1, y0), c = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+      return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy;
+    };
+  }
+
+  function xShards(i, p) {
+    const gx = xGrid, S = gx.S;
+    const x = (i % gx.cols) * S, y = ((i / gx.cols) | 0) * S;
+    const life = p < .22 ? p / .22 : 1 - (p - .22) / .78;
+    const alpha = Math.max(0, life) * (.72 + Math.random() * .28);
+    if (alpha <= .02) return;
+    /* 活跃网格先铺一层明确的蓝色，透明度再低也不会混成中性灰。 */
+    xfCtx.fillStyle = '#168be8';
+    xfCtx.globalAlpha = Math.max(.08, life * .28);
+    xfCtx.fillRect(x, y, S, S);
+    const n = XCFG.density + (Math.random() < .3 ? 1 : 0);
+    for (let s = 0; s < n; s++) {
+      const sz = Math.max(1, (S * (.12 + Math.random() * Math.random() * 1.05)) | 0);
+      const ox = (x + (Math.random() - .5) * S * 1.7) | 0;
+      const oy = (y + (Math.random() - .5) * S * 1.7) | 0;
+      xfCtx.fillStyle = XPALETTE[(Math.random() * XPALETTE.length) | 0];
+      xfCtx.globalAlpha = alpha * (.68 + Math.random() * .32);
+      xfCtx.fillRect(ox, oy, sz, sz);
+      if (Math.random() < .3) {
+        xfCtx.fillStyle = Math.random() < .5 ? '#55fff0' : '#00a8ff';
+        xfCtx.globalAlpha = alpha * .78;
+        xfCtx.fillRect(ox + (Math.random() < .5 ? -2 : 2), oy + (Math.random() < .5 ? -1 : 1), sz, sz);
+      }
+    }
+    if (Math.random() < .15) {
+      xfCtx.fillStyle = '#8cfff4';
+      xfCtx.globalAlpha = alpha * .9;
+      const d = Math.max(1, (S * .18) | 0);
+      xfCtx.fillRect((x + Math.random() * S) | 0, (y + Math.random() * S) | 0, d, d);
+    }
+  }
+
+  function xRun(dir) {
+    cancelAnimationFrame(xRaf);
+    const gx = xGrid;
+    if (!gx || !gx.n) { xFinish(dir); return; }
+    const seq = dir > 0 ? gx.order : gx.orderRev;
+    const burn = XCFG.burn, lead = burn * .6, trail = burn * .4;
+    const timeOf = i => dir > 0 ? gx.tOn[i] : gx.tMax - gx.tOn[i];
+    const total = gx.tMax + trail + 80;
+    let pA = 0, pB = 0, pC = 0, t0 = -1;
+    xRaf = requestAnimationFrame(function tick(now) {
+      if (t0 < 0) t0 = now;
+      const t = now - t0;
+      while (pA < gx.n && timeOf(seq[pA]) - lead <= t) pA++;
+      while (pB < pA && timeOf(seq[pB]) <= t) {
+        const i = seq[pB++], x = (i % gx.cols) * gx.S, y = ((i / gx.cols) | 0) * gx.S;
+        xbCtx.clearRect(x, y, gx.D, gx.D);
+        if (dir > 0) xbCtx.drawImage(gx.off, x, y, gx.D, gx.D, x, y, gx.D, gx.D);
+      }
+      while (pC < pA && timeOf(seq[pC]) + trail <= t) pC++;
+      xfCtx.clearRect(0, 0, xFx.width, xFx.height);
+      if (dir > 0) {
+        /* 边缘的底图碎片提高不透明度并加蓝色罩染，避免白底透上来后显灰。 */
+        xfCtx.globalAlpha = .72;
+        for (let k = pB; k < pA; k++) {
+          const i = seq[k], x = (i % gx.cols) * gx.S, y = ((i / gx.cols) | 0) * gx.S;
+          xfCtx.drawImage(gx.off, x, y, gx.D, gx.D, x, y, gx.D, gx.D);
+        }
+        xfCtx.globalCompositeOperation = 'source-atop';
+        xfCtx.fillStyle = 'rgba(0,126,255,.24)';
+        xfCtx.fillRect(0, 0, xFx.width, xFx.height);
+        xfCtx.globalCompositeOperation = 'source-over';
+        xfCtx.globalAlpha = 1;
+      }
+      /* source-over 保留蓝色本身；lighter 会把半透明蓝色洗成白灰。 */
+      xfCtx.globalCompositeOperation = 'source-over';
+      for (let k = pC; k < pA; k++) {
+        const i = seq[k];
+        xShards(i, (t - (timeOf(i) - lead)) / (lead + trail));
+      }
+      xfCtx.globalCompositeOperation = 'source-over';
+      xfCtx.globalAlpha = 1;
+      if (t < total) { xRaf = requestAnimationFrame(tick); return; }
+      xFinish(dir);
+    });
+  }
+
+  function xFinish(dir) {
+    xfCtx.clearRect(0, 0, xFx.width, xFx.height);
+    if (dir > 0) {
+      xbCtx.clearRect(0, 0, xBase.width, xBase.height);
+      if (xGrid && xGrid.off) xbCtx.drawImage(xGrid.off, 0, 0);
+      xDesk.classList.add('on');
+      tip('点击文件夹查看项目详情');
+    } else {
+      xbCtx.clearRect(0, 0, xBase.width, xBase.height);
+      xBase.classList.remove('on'); xFx.classList.remove('on');
+      xDesk.classList.remove('on'); xDetail.classList.remove('on');
+      st.xOpen = false; st.xBusy = false;
+    }
+    st.xBusy = false;
+  }
+
+  async function startExpand() {
+    if (st.xOpen || st.xBusy) return;
+    showBubble('天啊这是另一个世界！');
+    st.xBusy = true; st.xOpen = true;
+    if (!st.xSeen) { st.xSeen = true; done(3); }
+    if (!blissImg.complete || !blissImg.naturalWidth) await blissImg.decode().catch(() => {});
+    const spot = spots.find(s => s.id === 'xspot');
+    const ox = spot ? (spot.x - camXr) * SCALE : innerWidth / 2;
+    const oy = spot ? (spot.y - camYr) * SCALE : innerHeight / 2;
+    xBuildGrid(ox, oy);
+    if (!xGrid.n) { st.xOpen = false; st.xBusy = false; return; }
+    xBase.classList.add('on'); xFx.classList.add('on');
+    xRun(1);
+  }
+
+  function collapseExpand() {
+    if (!st.xOpen || st.xBusy) return;
+    st.xBusy = true;
+    xDesk.classList.remove('on'); xDetail.classList.remove('on');
+    tip('项目看完了');
+    xRun(-1);
+    /* 不等画面收完 —— 小猫立刻迈步，收起的动画和它一起走 */
+    toBook();
+  }
+
+  /* 文件夹桌面 */
+  xFolders.innerHTML = C.projects.map((p, i) =>
+    `<button data-i="${i}"><img src="assets/folder.png" alt=""><span>${esc(p.short)}</span></button>`).join('');
+  xFolders.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (b) xOpenDetail(+b.dataset.i);
+  });
+  function xOpenDetail(i) {
+    const p = C.projects[i];
+    xWinTitle.textContent = `${p.ch}  —  ${p.title}`;
+    const shot = p.img
+      ? `<figure class="xshot"><img src="${esc(p.img)}" alt="${esc(p.alt || p.title)}" loading="lazy">
+          ${p.cap ? `<figcaption>${esc(p.cap)}</figcaption>` : ''}</figure>` : '';
+    xDetailBody.innerHTML = `<h3>${esc(p.title)}</h3><div class="xmeta">${esc(p.meta)}</div>
+      ${shot}${p.p.map(t => `<p>${esc(t)}</p>`).join('')}
+      ${p.kpi.length ? `<div class="xkpi">${p.kpi.map(k => `<span>${esc(k)}</span>`).join('')}</div>` : ''}`;
+    xDetailBody.scrollTop = 0;
+    xDetail.classList.add('on');
+  }
+  document.getElementById('xDetailClose').onclick = () => xDetail.classList.remove('on');
+  xDetail.addEventListener('click', (e) => { if (e.target === xDetail) xDetail.classList.remove('on'); });
+  document.getElementById('xDeskClose').onclick = collapseExpand;
 
   /* ---------- 01 房间：吊灯 / 两幅油画 / 百合 ---------- */
   const loadImg = (u) => { const i = new Image(); i.src = u; return i; };
@@ -790,63 +985,6 @@
     }
   }
 
-  const tvScreen = document.getElementById('tvScreen');
-  const tvSnow = document.getElementById('tvSnow');
-  const tvFlash = document.getElementById('tvFlash');
-  const tvIcons = document.getElementById('tvIcons');
-  const tvWin = document.getElementById('tvWin');
-  const winTitle = document.getElementById('winTitle');
-  const winBody = document.getElementById('winBody');
-  let snowI = 0;
-
-  setInterval(() => {
-    snowI = (snowI + 1) % SNOW.length;
-    tvSnow.style.backgroundImage = `url(${SNOW[snowI]})`;
-  }, 110);
-
-  tvIcons.innerHTML = C.projects.map((p, i) =>
-    `<button data-i="${i}"><img src="assets/folder.png" alt=""><span>${esc(p.short)}</span></button>`).join('');
-  tvIcons.addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (b) openWin(+b.dataset.i);
-  });
-
-  function openWin(i) {
-    const p = C.projects[i];
-    winTitle.textContent = `${p.ch}  —  ${p.title}`;
-    // 有图的项目，图放在标题下面、正文上面；没有图的（AR 博物馆导览）就直接进正文
-    const shot = p.img
-      ? `<figure class="shot"><img src="${esc(p.img)}" alt="${esc(p.alt || p.title)}" loading="lazy">
-          ${p.cap ? `<figcaption>${esc(p.cap)}</figcaption>` : ''}</figure>`
-      : '';
-    winBody.innerHTML = `<h3>${esc(p.title)}</h3><div class="meta">${esc(p.meta)}</div>
-      ${shot}
-      ${p.p.map((t) => `<p>${esc(t)}</p>`).join('')}
-      ${p.kpi.length ? `<div class="kpi">${p.kpi.map((k) => `<span>${esc(k)}</span>`).join('')}</div>` : ''}`;
-    winBody.scrollTop = 0;
-    tvWin.classList.add('on');
-  }
-  const closeWin = () => tvWin.classList.remove('on');
-  document.getElementById('winClose').onclick = (e) => { e.stopPropagation(); closeWin(); };
-  document.getElementById('desktop').addEventListener('pointerdown', (e) => {
-    if (e.target.id === 'desktop') closeWin();
-  });
-
-  function openTV() {
-    hideBubble();
-    closeWin();
-    tvScreen.classList.remove('on');
-    tvzoom.classList.add('on');
-    if (st.tvSeen === 0) done(3);
-    st.tvSeen++;
-    // 开机：雪花闪一下 → 桌面亮起来
-    setTimeout(() => {
-      tvFlash.classList.remove('go'); void tvFlash.offsetWidth; tvFlash.classList.add('go');
-      tvScreen.classList.add('on');
-      st.tvOn = true;
-      tip('九个文件夹，一个项目一个 · 左边一列是 AI 相关的');
-    }, 620);
-  }
-
   function openCard() {
     const c = C.card;
     const img = document.getElementById('namecardImg');
@@ -855,37 +993,31 @@
     cardzoom.classList.add('on');
   }
 
-  /* 只收起来，不做别的 —— 空降换幕时用这个，
-     否则会顺手把「继续向前」的箭头也放出来，把刚摆好的状态搅乱。 */
   function dismissOverlays() {
-    tvzoom.classList.remove('on');
+    if (st.xOpen) {
+      cancelAnimationFrame(xRaf);
+      xBase.classList.remove('on'); xFx.classList.remove('on');
+      xDesk.classList.remove('on'); xDetail.classList.remove('on');
+      st.xOpen = false; st.xBusy = false;
+    }
     bookzoom.classList.remove('on');
     cardzoom.classList.remove('on');
   }
 
-  /* 关掉覆盖层不只是收起来：电视和手账本都是「这一幕的正事」，
-     看完了才把往下一幕的箭头放出来（钉在画面最右侧）。 */
   function closeOverlay() {
-    const wasTV = tvzoom.classList.contains('on');
     const wasBook = bookzoom.classList.contains('on');
     dismissOverlays();
 
-    if (wasTV && st.phase === 'tv') {
-      hideBubble();
-      tip('电视看完了');
-      showGuide('end', '继续向前', toBook);
-    }
     if (wasBook && st.phase === 'book') {
-      cat.hold = false;                 // 手账本收起来了，别再抱着
+      cat.hold = false;
       tip('手账本看完了');
       showBubble('手账本里有一个钥匙！再往前走走看看吧！');
       showGuide('end', '继续向前', toCastle);
     }
   }
-  document.getElementById('tvClose').onclick = closeOverlay;
   document.getElementById('bookClose').onclick = closeOverlay;
   document.getElementById('cardClose').onclick = closeOverlay;
-  [tvzoom, bookzoom, cardzoom].forEach((n) => { n.onclick = (e) => { if (e.target === n) closeOverlay(); }; });
+  [bookzoom, cardzoom].forEach((n) => { n.onclick = (e) => { if (e.target === n) closeOverlay(); }; });
 
   bookTabs.innerHTML = C.hobbies.map((h, i) =>
     `<button data-i="${i}" aria-label="${esc(h.tab)}" title="${esc(h.tab)}"></button>`).join('');
@@ -1007,10 +1139,10 @@
         if (i === 2) {                   // 03 实习：绳顶平台，台阶前
           st.phase = 'stairs'; cat.x = ST_X - 300; cat.y = LV;
           st.intern = 0; tip('点台阶上的圆圈，一级一级上去');
-        } else if (i === 3) {            // 04 项目：电视前
-          st.phase = 'tv'; cat.x = TV_X - 420; cat.y = LV2;
-          tip('前面有台坏掉的电视 —— 点一下试试');
-          showBubble('咦？这里有个电视，看看里边有什么吧～');
+        } else if (i === 3) {            // 04 项目：展开热点前
+          st.phase = 'tv'; cat.x = EXPAND_X - 420; cat.y = LV2;
+          tip('前面半空有个光点 —— 点一下试试');
+          showBubble('这是什么，我们来点一下吧！');
         } else if (i === 4) {            // 05 兴趣：书前
           st.phase = 'book'; cat.x = BOOK_X - 520; cat.y = LV2;
           tip('前面地上有本书，走过去捡起来');
@@ -1076,7 +1208,11 @@
   });
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeOverlay();
+    if (e.key === 'Escape') {
+      if (xDetail.classList.contains('on')) { xDetail.classList.remove('on'); return; }
+      if (st.xOpen) { collapseExpand(); return; }
+      closeOverlay();
+    }
   });
 
   /* ============================================================
@@ -1124,13 +1260,12 @@
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(buf, 0, 0, bw, bh, 0, 0, bw * PX, bh * PX);
 
-    // 4) 真实素材：房间里的吊灯 / 油画 / 百合，还有那台电视
+    // 4) 真实素材：房间里的吊灯 / 油画 / 百合
     ctx.imageSmoothingEnabled = true;
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     drawRoom();
     drawCastle();
     drawGroundBook();
-    drawWorldTV();
 
     // 5) 小猫（像素，对齐网格，走在电视前面）
     ctx.imageSmoothingEnabled = false;
@@ -1165,6 +1300,7 @@
     buf.width = bw; buf.height = bh;
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    if (st.xOpen) xSyncRegion();
   }
 
   window.addEventListener('resize', resize);
