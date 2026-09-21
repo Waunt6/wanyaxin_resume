@@ -151,7 +151,7 @@ button{font-family:inherit}
   position:fixed;top:0;left:0;right:0;height:64px;z-index:30;
   display:flex;align-items:center;padding:0 22px;
   pointer-events:none;                       /* 只有菜单本身接点击，别挡住世界 */
-  background:linear-gradient(#fdfdfc 45%,rgba(253,253,252,0));
+  background:none;
 }
 /* 悬浮的章节菜单：点一下直接空降到那一幕 */
 #chapters{
@@ -284,6 +284,14 @@ button{font-family:inherit}
 .xwin-body::-webkit-scrollbar{width:12px;background:#dcdcdc}
 .xwin-body::-webkit-scrollbar-thumb{background:#c9c9c9;border:1px solid #6d6d6d}
 .xwin-body h3{margin:0 0 5px;font-size:17px;font-weight:700;color:#111}
+.xwin-body .xtitle-row{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.xwin-body .xtitle-row h3{min-width:0}
+.xwin-body .xdownload{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #0507a0;background:#fff;color:#0507a0;text-decoration:none;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:6px 10px;
+}
+.xwin-body .xdownload:hover,.xwin-body .xdownload:focus-visible{background:#0507a0;color:#fff}
 .xwin-body .xmeta{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#666;
   padding-bottom:9px;margin-bottom:12px;border-bottom:1px solid #d5d5d5}
 .xwin-body p{margin:0 0 11px;font-size:14px;line-height:1.8;color:#1a1a1a}

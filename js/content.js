@@ -131,6 +131,8 @@ window.C = {
       short: '水墨生成装置',
       title: '水墨呼吸 中国水墨画生成交互装置',
       meta: '生成式艺术与实体交互',
+      pdf: 'output/pdf/wanyaxin_Breathing-in-Ink.pdf',
+      download: 'wanyaxin_Breathing-in-Ink.pdf',
       img: 'assets/projects/ink.webp',
       alt: '水墨呼吸 中国水墨画生成交互装置 · 项目图',
       p: [
@@ -175,6 +177,8 @@ window.C = {
       short: '儿童财商 APP',
       title: 'Funkid 儿童青少年财商教育 APP',
       meta: '服务设计与多端交互',
+      pdf: 'output/pdf/wanyaxin_Funkid.pdf',
+      download: 'wanyaxin_Funkid.pdf',
       img: 'assets/projects/funkid.webp',
       alt: 'Funkid 儿童青少年财商教育 APP · 项目图',
       p: [
@@ -189,6 +193,8 @@ window.C = {
       short: '宠物转运 APP',
       title: 'Transpet 宠物安置和转运 APP',
       meta: '服务设计与移动端交互',
+      pdf: 'output/pdf/wanyaxin_Transpet.pdf',
+      download: 'wanyaxin_Transpet.pdf',
       img: 'assets/projects/transpet.webp',
       alt: 'Transpet 宠物安置和转运 APP · 项目图',
       p: [

@@ -9,12 +9,7 @@
   /* ---------- 世界坐标 ---------- */
   const CS = 3, CW = CAT.W * CS, CH = CAT.H * CS;
 
-  /* 绳顶平台。这个数决定绳子有多长 —— 绳子是从 LV 垂到房间地面(0)的。
-     要求「爬到第一个绳结时房间已经完全出画」，反推出来的：
-     停住时可见区间是 [camY, camY+viewH]，camY = 猫y - ROPE_A*viewH，
-     所以 猫y ≤ 房间最高处 - (1-ROPE_A)*viewH。viewH 最大 1174（H≈783，PX 恰好还没跳到 3 那一档），
-     房间最高处是吊灯顶（含链条）= ROOM.lamp.y0 - CHAIN_LEN = -735 - 88 = -823，
-     算下来猫要停在 -1527 以下；取 -1638（KNOT_Y[0] + KNOT_GAP），最坏窗口下还留 111 的余量。 */
+  /* 绳顶平台。这个数决定绳子有多长 —— 绳子是从 LV 垂到房间地面(0)的。 */
   const LV = -3080;                     // 绳顶平台（比原来高 300：第三张教育卡挂在绳子上，尽头还要留一段空绳子给「爬上来」那个圈）
   const SH = 110;
   const LV2 = LV - SH * 3;              // 台阶顶 = 后面所有场景的地面
@@ -23,9 +18,10 @@
   /* 绳结间距 = 教育卡片的行距，所以它由最高的那张卡决定，不能随便调小。
      本科那张带「排名 / 课程 / 概述」三块，实测 344 高（430px 宽的卡）——
      间距 380 留 36 的余量。**给卡片加内容前先量一遍高度**，超过 344 就要连着
-     KNOT_Y / LV / PIX_Y0 一起往上推。KNOT_Y[0] 不能动：它和 KNOT_GAP 一起
-     决定「爬到第一个绳结时房间已经完全出画」那个约束（停在 -1638）。 */
-  const KNOT_Y = [-1820, -2200, -2580], KNOT_GAP = 182;  // 停在绳结下面一点，不挡住热点
+     KNOT_Y / LV / PIX_Y0 一起调整。 */
+  /* 第一枚绳结整体下移：点「往上爬」后，镜头只升到吊灯顶部刚好离开画面的位置，
+     不再把小猫一次带到过高处；后两枚保持 380 的教育卡片行距。 */
+  const KNOT_Y = [-1710, -2090, -2470], KNOT_GAP = 182;  // 停在绳结下面一点，不挡住热点
   const TOP_GAP = 300;                                  // 最后一段停在平台下面这么远（比 KNOT_GAP 大，好留出那截空绳子）
   /* 点第 i 个绳结 → 小猫爬到 EDU_DEST(i) 停住，第 i 段教育就挂在那儿。
      卡片顶对齐小猫的头顶（脚在 cat.y，身高 CH），所以文字是「浮在小猫旁边」，
@@ -37,7 +33,7 @@
   const TOP_SPOT = LV + 84;
   const EDU_TOP = (i) => EDU_DEST(i) - CH - 10;
 
-  const ST_X = 1345, SW = 700;
+  const ST_X = 1100, SW = 630;
   const STEP_TOP = [LV - SH, LV - SH * 2, LV - SH * 3];
   /* 小猫停在每一级的**外侧**（刚迈上来的那个边沿），不停在台面正中。
      镜头把小猫钉在画面 26% 处 —— 也就是小猫左边只看得到 .26 × viewW 那么宽
@@ -49,18 +45,18 @@
   const STEP_MARK = (i) => ST_X + SW * i + STEP_PAD;
   const STEP_STOP = (i) => STEP_MARK(i) - CW / 2;
 
-  const EXPAND_X = 4560;                          // 展开热点的世界 X 坐标
-  const BOOK_X = 5900;
+  const EXPAND_X = 3920;                          // 展开热点的世界 X 坐标
+  const BOOK_X = 5260;
   /* 地上那本手账本（assets/book.webp，棕色外壳的实拍图）。
      只给高度，宽度按原图比例算 —— 换图不会变形。小猫高 132，本子比它矮一截。 */
   const BOOK_H = 106, BOOK_W = Math.round(BOOK_H * (324 / 440));
-  const CAS_X = 7000;
+  const CAS_X = 6360;
   /* 06 城堡正面：真实素材。宽高按原图比例锁死，门的位置是从图里量出来的百分比。 */
   const CASTLE = { x: CAS_X, h: 720, ar: 1091 / 1263,
                    door: { l: .42, t: .72, w: .22, h: .28 } };
   CASTLE.w = CASTLE.h * CASTLE.ar;
   const GATE_X = CAS_X + CASTLE.w * (CASTLE.door.l + CASTLE.door.w / 2);
-  const WORLD_R = 7800;
+  const WORLD_R = 7160;
 
   const IN_X0 = 10000, IN_X1 = 11380, PILLAR_X = 10620;   // 城堡内部（另一处空间）
   /* 名片柱 + 柱子上那束光，也都是真实素材 */
@@ -118,7 +114,8 @@
      房间里镜头是锁死的，所以按房间的静止机位算一次就行；爬绳子时镜头升上去，
      这些东西还是老老实实留在世界里往下走。 */
   const fitTop = (y0, padPx) => Math.max(y0, -GROUND_A * viewH + padPx / SCALE);
-  const LAMP_PAD = 70, INTRO_PAD = 62;
+  /* 链条上端贴到悬浮导航的下沿附近；顶部不再留出一整条白色缓冲带。 */
+  const LAMP_PAD = 62, INTRO_PAD = 62;
   ROOM.art.forEach((a) => { a.w = a.h * a.ar; });
   ROOM.vase.w = ROOM.vase.h * AR.vase;
   ROOM.vase.y = -ROOM.vase.h;
@@ -272,11 +269,11 @@
   /* ============================================================
      每帧的像素小东西（绳子会伸缩、书和名片会被捡走）
      ============================================================ */
-  const easeBack = (t) => { const c = 1.24; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
-
   function drawRope() {
     if (st.drop <= 0) return;
-    const yEnd = LV + (0 - LV) * Math.min(1.02, easeBack(Math.min(1, st.drop)));
+    /* 绳子只向下生长到地面：不用带回弹的 easeBack，避免先钻出地面再缩回来。 */
+    const t = Math.min(1, st.drop);
+    const yEnd = LV + (0 - LV) * (1 - Math.pow(1 - t, 3));
     pv(ROPE_X, LV, yEnd); pv(ROPE_X + 6, LV, yEnd);
     for (let y = LV + 15; y < yEnd - 12; y += 24) { pfill(ROPE_X, y, 3, 3, INK); pfill(ROPE_X + 3, y + 12, 3, 3, INK); }
   }
@@ -413,7 +410,8 @@
          换窗口大小它也一直在中线上。 */
       get y() { return LV2 - (GROUND_A - .5) * viewH; },
       label: '点一下试试', live: () => st.phase === 'tv' && !st.xOpen,
-      act: () => goTo(EXPAND_X - CW - 30, startExpand),
+      /* 热点本身就是入口：点击后原地展开，不让小猫先走到热点旁边。 */
+      act: startExpand,
     });
 
     // 书
@@ -435,7 +433,7 @@
     add({
       id: 'gate', shape: 'rect',
       x: CASTLE.x + CASTLE.w * CASTLE.door.l, y: LV2 - CASTLE.h * (1 - CASTLE.door.t),
-      w: CASTLE.w * CASTLE.door.w, h: CASTLE.h * CASTLE.door.h, label: '推门进去',
+      w: CASTLE.w * CASTLE.door.w, h: CASTLE.h * CASTLE.door.h, label: '打开大门',
       live: () => st.phase === 'castle', mark: true,
       act: () => goTo(GATE_X - CW / 2, enterCastle),
     });
@@ -461,6 +459,12 @@
       else if (wx > s.x && wx < s.x + s.w && wy > s.y && wy < s.y + s.h) return s;
     }
     return null;
+  }
+
+  function clearHoverHint() {
+    hover = null;
+    hintEl.classList.remove('on');
+    stage.classList.remove('hot');
   }
 
   /* ============================================================
@@ -640,12 +644,17 @@
   function toCastle() {
     hideBubble();
     st.phase = 'castle'; paintChapters();
-    goTo(CAS_X - 320, () => tip('到尽头了 —— 点城堡的门进去'));
+    goTo(CAS_X - 320, () => {
+      tip('到尽头了 —— 点城堡的门进去');
+      showBubble('这里有个城堡！我们用刚刚拿到的钥匙来打开城堡大门吧！');
+    });
   }
 
   /* --- 06 城堡：进门 → loading → 内部 --- */
   let castleTimer = 0, ropeTimer = 0;      // 两个待执行的定时器，空降时要取消掉
   function enterCastle() {
+    hideBubble();
+    clearHoverHint();
     loadEl.classList.add('on');
     loadTxt.textContent = '推开城堡的门…';
     castleTimer = setTimeout(() => {
@@ -656,6 +665,7 @@
       camXr = Math.round(camX / K) * K; camYr = Math.round(camY / K) * K;
       paintChapters();
       tip('中间那根柱子上，好像放着什么');
+      showBubble('这里有个信封，里边有没有宝藏呢！');
       render();
       setTimeout(() => loadEl.classList.remove('on'), 260);
     }, 1150);
@@ -886,7 +896,9 @@
     const shot = p.img
       ? `<figure class="xshot"><img src="${esc(p.img)}" alt="${esc(p.alt || p.title)}" loading="lazy">
           ${p.cap ? `<figcaption>${esc(p.cap)}</figcaption>` : ''}</figure>` : '';
-    xDetailBody.innerHTML = `<h3>${esc(p.title)}</h3><div class="xmeta">${esc(p.meta)}</div>
+    const detailLink = p.pdf
+      ? `<a class="xdownload" href="${esc(p.pdf)}" download="${esc(p.download || '')}">查看详情</a>` : '';
+    xDetailBody.innerHTML = `<div class="xtitle-row"><h3>${esc(p.title)}</h3>${detailLink}</div><div class="xmeta">${esc(p.meta)}</div>
       ${shot}${p.p.map(t => `<p>${esc(t)}</p>`).join('')}
       ${p.kpi.length ? `<div class="xkpi">${p.kpi.map(k => `<span>${esc(k)}</span>`).join('')}</div>` : ''}`;
     xDetailBody.scrollTop = 0;
@@ -1115,7 +1127,7 @@
     clearTimeout(castleTimer); clearTimeout(ropeTimer);
     loadEl.classList.remove('on');
     dismissOverlays();
-    hideGuide(); hideBubble();
+    hideGuide(); hideBubble(); clearHoverHint();
     cat.plan.length = 0;
     ['intro', 'cap0', 'cap1', 'ed0', 'ed1', 'ed2', 'in0', 'in1', 'in2'].forEach(hide);
     st.edu = -1; st.intern = -1; st.top = false;
@@ -1150,6 +1162,7 @@
         } else {                         // 06 联系：城堡门口
           st.phase = 'castle'; cat.x = CAS_X - 320; cat.y = LV2;
           tip('到尽头了 —— 点城堡的门进去');
+          showBubble('这里有个城堡！我们用刚刚拿到的钥匙来打开城堡大门吧！');
         }
       }
     }
@@ -1311,10 +1324,25 @@
   camXr = Math.round(camX / K) * K; camYr = Math.round(camY / K) * K;
   layer.style.transform = `scale(${SCALE}) translate(${-camXr}px,${-camYr}px)`;
   tip(C.intro.hint);
-  requestAnimationFrame((t) => {
-    last = t; loop(t);
-    /* 首屏已经画出来了，这时候再去取后面几幕的素材 */
-    requestAnimationFrame(() => defer.splice(0).forEach((f) => f()));
+  /* 首屏的四类实物素材全部可用后才揭开 loading，避免用户先看到空画框。 */
+  const firstScreenAssets = [lampImg, vaseImg, ...artImg];
+  const waitForImage = (im) => new Promise((resolve, reject) => {
+    if (im.complete) { ready(im) ? resolve() : reject(new Error(`Failed to load ${im.src}`)); return; }
+    im.addEventListener('load', resolve, { once: true });
+    im.addEventListener('error', reject, { once: true });
+  }).then(() => (im.decode ? im.decode().catch(() => {}) : undefined));
+
+  loadTxt.textContent = '正在加载首屏素材…';
+  Promise.all(firstScreenAssets.map(waitForImage)).then(() => {
+    render();
+    requestAnimationFrame((t) => {
+      last = t; loop(t);
+      loadEl.classList.remove('on');
+      /* 首屏已经画出来了，这时候再去取后面几幕的素材 */
+      requestAnimationFrame(() => defer.splice(0).forEach((f) => f()));
+    });
+  }).catch(() => {
+    loadTxt.textContent = '首屏素材加载失败，请刷新页面重试';
   });
 
   /* 调试（面板不可见时 rAF 会停）：__d.step(秒) / __d.run('kn0') */
