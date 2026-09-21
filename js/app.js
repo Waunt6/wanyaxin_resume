@@ -19,17 +19,19 @@
      本科那张带「排名 / 课程 / 概述」三块，实测 344 高（430px 宽的卡）——
      间距 380 留 36 的余量。**给卡片加内容前先量一遍高度**，超过 344 就要连着
      KNOT_Y / LV / PIX_Y0 一起调整。 */
-  /* 第一枚绳结整体下移：点「往上爬」后，镜头只升到吊灯顶部刚好离开画面的位置，
+  /* 第一枚绳结整体下移：点「往上爬」后，镜头只升到吊灯顶部的链子刚好离开画面的位置，
      不再把小猫一次带到过高处；后两枚保持 380 的教育卡片行距。 */
-  const KNOT_Y = [-1710, -2090, -2470], KNOT_GAP = 182;  // 停在绳结下面一点，不挡住热点
-  const TOP_GAP = 300;                                  // 最后一段停在平台下面这么远（比 KNOT_GAP 大，好留出那截空绳子）
+  const KNOT_Y = [-1600, -1980, -2360], KNOT_GAP = 182;  // 停在绳结下面一点，不挡住热点
+  /* 第三段不再直接按平台留 300：改为 522 后，三张教育卡的顶部
+     依次是 -1940 / -2320 / -2700，纵向间距统一为 380。 */
+  const TOP_GAP = 522;
   /* 点第 i 个绳结 → 小猫爬到 EDU_DEST(i) 停住，第 i 段教育就挂在那儿。
      卡片顶对齐小猫的头顶（脚在 cat.y，身高 CH），所以文字是「浮在小猫旁边」，
      不是浮在它爬过的半路上。卡片往下长，所以间距要大于最高的那张（见上）。 */
   /* 第三段没有第四个绳结，平台就是那个「绳结」—— 同样挂在它下面一个 KNOT_GAP 处。
      所以三张卡都是「小猫吊在绳子上、卡片浮在它旁边」，没有一张站在地上。 */
   const EDU_DEST = (i) => (i < 2 ? KNOT_Y[i + 1] + KNOT_GAP : LV + TOP_GAP);
-  /* 第三段停得比绳结那两段更靠下 —— 头顶要留出一截空绳子，「爬上来」那个圈画在那儿 */
+  /* 最后一张卡看完后，再单独爬完剩下的空绳子上平台。 */
   const TOP_SPOT = LV + 84;
   const EDU_TOP = (i) => EDU_DEST(i) - CH - 10;
 
@@ -421,10 +423,10 @@
       live: () => st.phase === 'book', mark: true,
       act: () => {
         goTo(BOOK_X - CW - 30, () => {
-          hideBubble();
+          hideBubble(); hideGuide();
           cat.hold = true;
           if (!st.book) { st.book = true; done(4); }
-          setTab(st.tab); bookzoom.classList.add('on');
+          setTab(st.tab, true);
         });
       },
     });
@@ -444,9 +446,10 @@
       x: PILLAR_X - CARD_W / 2 - 6, y: CARD_CY - CARD_H / 2 - 6, w: CARD_W + 12, h: CARD_H + 12,
       label: '捡起名片',
       live: () => st.phase === 'inner', mark: true,          // 放回去之后还能再看一次
-      act: () => goTo(PILLAR_X - CW - 86, () => {
-        openCard();
-        if (!st.card) { st.card = true; done(5); }
+      act: () => goTo(PILLAR_X - CW - 86, async () => {
+        if (await openCard()) {
+          if (!st.card) { st.card = true; done(5); }
+        }
       }),
     });
   }
@@ -676,16 +679,53 @@
      ============================================================ */
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
-  /* 手账本：每一页就是一张图，正文都画在里面了。第一次打开时把五张全预热，翻页才不会闪 */
+  /* 手账页和名片是大图：先在内存里下载并解码，确认可画后再揭开 loading。 */
+  const overlayAssets = new Map();
+  function ensureOverlayAsset(src) {
+    if (overlayAssets.has(src)) return overlayAssets.get(src);
+    const promise = new Promise((resolve, reject) => {
+      const im = new Image();
+      im.addEventListener('load', () => {
+        const decoded = im.decode ? im.decode().catch(() => {}) : Promise.resolve();
+        decoded.then(() => resolve(im));
+      }, { once: true });
+      im.addEventListener('error', () => reject(new Error(`Failed to load ${src}`)), { once: true });
+      im.src = src;
+    });
+    overlayAssets.set(src, promise);
+    return promise;
+  }
+  function showAssetLoading() {
+    loadTxt.textContent = '正在加载中';
+    loadEl.classList.add('on');
+  }
+  function hideAssetLoading() { loadEl.classList.remove('on'); }
+  function failAssetLoading() { loadTxt.textContent = '素材加载失败，请刷新页面重试'; }
+
+  /* 手账本：首先等当前页完整加载，然后在后台预热剩下四页。 */
   const bookImg = document.getElementById('bookImg');
   let bookWarm = false;
-  function setTab(i) {
+  async function setTab(i, openAfter = false) {
     st.tab = i;
     const h = C.hobbies[i];
-    if (!bookWarm) { bookWarm = true; C.hobbies.forEach((o) => { const im = new Image(); im.src = o.img; }); }
-    bookImg.src = h.img;
-    bookImg.alt = h.alt;
-    [...bookTabs.children].forEach((b, k) => b.classList.toggle('on', k === i));
+    showAssetLoading();
+    try {
+      await ensureOverlayAsset(h.img);
+      bookImg.src = h.img;
+      bookImg.alt = h.alt;
+      [...bookTabs.children].forEach((b, k) => b.classList.toggle('on', k === i));
+      if (openAfter) bookzoom.classList.add('on');
+      hideAssetLoading();
+      if (!bookWarm) {
+        bookWarm = true;
+        C.hobbies.forEach((o) => { if (o.img !== h.img) ensureOverlayAsset(o.img).catch(() => {}); });
+      }
+      return true;
+    } catch (_) {
+      cat.hold = false;
+      failAssetLoading();
+      return false;
+    }
   }
 
   /* 首屏只用得上房间那几样（吊灯 / 两幅油画 / 百合）。后面几幕的素材先只造壳，
@@ -951,9 +991,8 @@
   const envImg = loadLater('assets/envelope.webp');
 
   /* 地上那本手账本：真实素材，立在地面上（跟城堡 / 柱子一样直接画在主画布，不像素化）。
-     捡走之后就不画了（st.book）。宽高按原图比例锁死，换图不会变形。 */
+     关上之后仍然放回原位，让用户可以重复打开。宽高按原图比例锁死。 */
   function drawGroundBook() {
-    if (st.book) return;
     const b = place(BOOK_X - BOOK_W / 2, LV2 - BOOK_H, BOOK_W, BOOK_H);
     if (b && ready(bookImgW)) ctx.drawImage(bookImgW, b[0], b[1], b[2], b[3]);
   }
@@ -997,12 +1036,21 @@
     }
   }
 
-  function openCard() {
+  async function openCard() {
     const c = C.card;
-    const img = document.getElementById('namecardImg');
-    img.src = c.img; img.alt = c.alt;
-    document.getElementById('cardNote').textContent = c.note;
-    cardzoom.classList.add('on');
+    showAssetLoading();
+    try {
+      await ensureOverlayAsset(c.img);
+      const img = document.getElementById('namecardImg');
+      img.src = c.img; img.alt = c.alt;
+      document.getElementById('cardNote').textContent = c.note;
+      cardzoom.classList.add('on');
+      hideAssetLoading();
+      return true;
+    } catch (_) {
+      failAssetLoading();
+      return false;
+    }
   }
 
   function dismissOverlays() {

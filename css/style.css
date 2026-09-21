@@ -417,13 +417,16 @@ button{font-family:inherit}
   background:#fdfdfc;opacity:0;pointer-events:none;transition:opacity .38s;
 }
 .loading.on{opacity:1;pointer-events:auto}
-.lbox{display:flex;flex-direction:column;align-items:center;gap:18px}
+.lbox{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:min(320px,80vw);gap:24px;text-align:center;
+}
+.lbox .ldots{display:flex;align-items:center;justify-content:center;gap:20px;width:100%}
 .lbox .ld{
-  width:7px;height:7px;border-radius:50%;background:var(--ink);display:inline-block;
+  width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--ink);display:block;
   animation:blip 1.05s ease-in-out infinite;
 }
-.lbox{flex-direction:row;flex-wrap:wrap;justify-content:center;max-width:260px}
 .lbox .ld:nth-child(2){animation-delay:.16s}
 .lbox .ld:nth-child(3){animation-delay:.32s}
-.lbox p{flex-basis:100%;text-align:center;margin:16px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--mute)}
+.lbox p{width:100%;margin:0;font-family:var(--mono);font-size:10.5px;line-height:1.6;letter-spacing:.2em;color:var(--mute)}
 @keyframes blip{0%,100%{opacity:.18;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}}
