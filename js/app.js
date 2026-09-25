@@ -1,5 +1,5 @@
 /* ============================================================
-   小猫侦探 · 世界 / 相机 / 流程
+   小猫探险记 · 世界 / 相机 / 流程
    世界是一条连续的路：房间地面 → 绳子 → 绳顶平台 → 台阶 → 电视 → 书 → 城堡
    相机把小猫钉在画面偏左，动的是环境；只有走到世界尽头（城堡）小猫才会自己走过去
    ============================================================ */
@@ -88,6 +88,10 @@
      过渡距离 = CLIMB_R × viewH，这个比例必须大于 (GROUND_A - ROPE_A)，
      否则过渡期间地面在画面里会往回走；.55 > .46，留了余量。 */
   const ROPE_A = .40, CLIMB_R = .55;
+  /* 最后一张教育卡看完后，绳顶热点比小猫高 438 世界单位。
+     大屏会启用更高的像素倍率，固定 ROPE_A 时圆圈反而会跑到视口上方。
+     进入最后一段时把它稳定露在顶栏下面，像素倍率和窗口高度都由公式吸收。 */
+  const TOP_REVEAL_PX = 112;
   /* 开场文字的理想高度。原来贴在画面很上方，现在压到画面中段（吊灯下方、小猫上方）——
      字少了，靠顶会显得整块飘着。矮窗口仍然由 fitTop 兜底往下压。 */
   const INTRO_Y = -470;
@@ -169,7 +173,7 @@
 
   const st = {
     phase: 'room', started: false, drop: 0, dropping: false,
-    edu: -1, intern: -1, tab: 0, top: false,
+    edu: -1, intern: -1, tab: 0, top: false, topFocus: false,
     xSeen: false, xOpen: false, xBusy: false, book: false, card: false, inCastle: false,
   };
   const doneCh = new Set();
@@ -584,6 +588,7 @@
         if (i < 2) { st.edu = i + 1; tip('再点下一个绳结'); }
         else {
           st.top = true;                 // 绳子尽头那个圈亮起来
+          st.topFocus = true;            // 镜头上移，保证圆圈不会跑出视口
           tip('这一段看完了 —— 点绳子尽头那个圈，爬上平台');
         }
       }
@@ -597,6 +602,7 @@
     cat.plan.push({ t: 'climb', y: LV });
     cat.plan.push({
       t: 'do', fn: () => {
+        st.topFocus = false;
         cat.rope = false;              // 踩上平台就松手
         cat.up = true;
         done(1);
@@ -1178,7 +1184,7 @@
     hideGuide(); hideBubble(); clearHoverHint();
     cat.plan.length = 0;
     ['intro', 'cap0', 'cap1', 'ed0', 'ed1', 'ed2', 'in0', 'in1', 'in2'].forEach(hide);
-    st.edu = -1; st.intern = -1; st.top = false;
+    st.edu = -1; st.intern = -1; st.top = false; st.topFocus = false;
     st.inCastle = false;
     region = { x0: -440, x1: WORLD_R };
     cat.dir = 1;
@@ -1218,10 +1224,22 @@
     paintChapters();
   }
 
+  /* 当前镜头的竖向锚点。最后一个绳顶热点激活后，额外把小猫往画面下方放，
+     让 TOP_SPOT 至少落在顶栏下方 TOP_REVEAL_PX 的位置。点击后 focus 保持到
+     爬上平台，因此不会在圆圈消失的瞬间突然跳回原机位。 */
+  function targetCameraAnchor() {
+    const up = clamp((groundAt(cat.x) - cat.y) / (CLIMB_R * viewH), 0, 1);
+    let want = GROUND_A + (ROPE_A - GROUND_A) * up;
+    if (st.topFocus) {
+      const reveal = (cat.y - TOP_SPOT + TOP_REVEAL_PX / SCALE) / viewH;
+      want = Math.max(want, clamp(reveal, ROPE_A, .92));
+    }
+    return want;
+  }
+
   /* 镜头瞬间吸到小猫身上（含爬绳时那套竖向锚点），不走 lerp */
   function snapCam() {
-    const up = clamp((groundAt(cat.x) - cat.y) / (CLIMB_R * viewH), 0, 1);
-    camA = GROUND_A + (ROPE_A - GROUND_A) * up;
+    camA = targetCameraAnchor();
     const right = Math.max(region.x0, region.x1 - viewW);
     camX = tgtX = clamp(cat.x + CW / 2 - viewW * ANCH_X, region.x0, right);
     camY = tgtY = cat.y - viewH * camA;
@@ -1285,8 +1303,7 @@
     tick(dt);
     {
       tgtX = cat.x + CW / 2 - viewW * ANCH_X;
-      const up = clamp((groundAt(cat.x) - cat.y) / (CLIMB_R * viewH), 0, 1);
-      const want = GROUND_A + (ROPE_A - GROUND_A) * up;
+      const want = targetCameraAnchor();
       /* 往上爬（want 变小）直接取值：只要不滞后，地面就只会往下走，不会回弹。
          爬到顶踩上平台时 want 会一下子跳回 GROUND_A，那一下才做时间缓动，滑过去而不是切过去。 */
       camA = want < camA ? want : camA + (want - camA) * Math.min(1, dt * 3);
