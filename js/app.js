@@ -10,7 +10,7 @@
   const CS = 3, CW = CAT.W * CS, CH = CAT.H * CS;
 
   /* 绳顶平台。这个数决定绳子有多长 —— 绳子是从 LV 垂到房间地面(0)的。 */
-  const LV = -3080;                     // 绳顶平台（比原来高 300：第三张教育卡挂在绳子上，尽头还要留一段空绳子给「爬上来」那个圈）
+  const LV = -2838;                     // 绳顶平台 = 第三段停点 -2558 往上 TOP_GAP（见下）
   const SH = 110;
   const LV2 = LV - SH * 3;              // 台阶顶 = 后面所有场景的地面
 
@@ -22,17 +22,19 @@
   /* 第一枚绳结整体下移：点「往上爬」后，镜头只升到吊灯顶部的链子刚好离开画面的位置，
      不再把小猫一次带到过高处；后两枚保持 380 的教育卡片行距。 */
   const KNOT_Y = [-1600, -1980, -2360], KNOT_GAP = 182;  // 停在绳结下面一点，不挡住热点
-  /* 第三段不再直接按平台留 300：改为 522 后，三张教育卡的顶部
-     依次是 -1940 / -2320 / -2700，纵向间距统一为 380。 */
-  const TOP_GAP = 522;
+  /* 第三段停点到平台的那截空绳子。三张教育卡的顶部依次是 -1940 / -2320 / -2700，
+     纵向间距统一为 380 —— 这由 LV + TOP_GAP = -2558 锁住，两个数要一起改。
+     空绳子从 522 收到 280：太长的话热点和硕士卡不能同时放进一屏，卡片底部会被切掉。 */
+  const TOP_GAP = 280;
   /* 点第 i 个绳结 → 小猫爬到 EDU_DEST(i) 停住，第 i 段教育就挂在那儿。
      卡片顶对齐小猫的头顶（脚在 cat.y，身高 CH），所以文字是「浮在小猫旁边」，
      不是浮在它爬过的半路上。卡片往下长，所以间距要大于最高的那张（见上）。 */
   /* 第三段没有第四个绳结，平台就是那个「绳结」—— 同样挂在它下面一个 KNOT_GAP 处。
      所以三张卡都是「小猫吊在绳子上、卡片浮在它旁边」，没有一张站在地上。 */
   const EDU_DEST = (i) => (i < 2 ? KNOT_Y[i + 1] + KNOT_GAP : LV + TOP_GAP);
-  /* 最后一张卡看完后，再单独爬完剩下的空绳子上平台。 */
-  const TOP_SPOT = LV + 84;
+  /* 最后一张卡看完后，热点浮在绳子顶端、挂钩的正上方（挂钩顶在 LV - 27）——
+     它指的就是「爬到这儿」。点了以后小猫爬完剩下的空绳子，踩上平台。 */
+  const TOP_SPOT = { x: ROPE_X + 3, y: LV - 66 };
   const EDU_TOP = (i) => EDU_DEST(i) - CH - 10;
 
   const ST_X = 1100, SW = 630;
@@ -88,10 +90,12 @@
      过渡距离 = CLIMB_R × viewH，这个比例必须大于 (GROUND_A - ROPE_A)，
      否则过渡期间地面在画面里会往回走；.55 > .46，留了余量。 */
   const ROPE_A = .40, CLIMB_R = .55;
-  /* 最后一张教育卡看完后，绳顶热点比小猫高 438 世界单位。
-     大屏会启用更高的像素倍率，固定 ROPE_A 时圆圈反而会跑到视口上方。
-     进入最后一段时把它稳定露在顶栏下面，像素倍率和窗口高度都由公式吸收。 */
-  const TOP_REVEAL_PX = 112;
+  /* 最后一张教育卡看完后，绳顶热点比小猫高 TOP_GAP + 66 世界单位。
+     进入最后一段时镜头下移，把热点中心稳定露在顶栏下方 TOP_REVEAL_PX 处；
+     像素倍率和窗口高度都由公式吸收（见 targetCameraAnchor）。
+     矮窗口里热点和最后一张卡的底边抢地方：先保卡片完整（底下留 CARD_PAD_PX
+     给提示语），热点最多往上贴到 TOP_MIN_PX —— 光圈外环仍在顶栏下面。 */
+  const TOP_REVEAL_PX = 150, TOP_MIN_PX = 96, CARD_PAD_PX = 48;
   /* 开场文字的理想高度。原来贴在画面很上方，现在压到画面中段（吊灯下方、小猫上方）——
      字少了，靠顶会显得整块飘着。矮窗口仍然由 fitTop 兜底往下压。 */
   const INTRO_Y = -470;
@@ -291,6 +295,11 @@
       if (!s.live()) continue;
       if (s.shape === 'circle') {
         const cx = (s.x - camXr) * SCALE, cy = (s.y - camYr) * SCALE, r = s.r * SCALE * pulse;
+        if (s.ground != null) {          // 贴地的影子：圈胀大时影子收小，像是轻轻浮起又落下
+          const gy = (s.ground - camYr) * SCALE - 2, gr = s.r * SCALE * (2.1 - pulse);
+          ctx.beginPath(); ctx.ellipse(cx, gy, gr, gr * .26, 0, 0, 7);
+          ctx.fillStyle = 'rgba(61,219,203,.22)'; ctx.fill();
+        }
         ctx.strokeStyle = CY;
         if (s.tie != null) {
           ctx.beginPath(); ctx.moveTo((s.tie - camXr) * SCALE, cy); ctx.lineTo(cx - r - 5, cy);
@@ -394,16 +403,16 @@
       act: () => knot(i),
     }));
 
-    // 绳子尽头：第三段看完之后才亮，点了才真的爬上平台
+    // 绳子顶端：第三段看完之后才亮，点了才真的爬上平台
     add({
-      id: 'top', shape: 'circle', x: ROPE_X + 3, y: TOP_SPOT, r: 18, label: '爬上来',
+      id: 'top', shape: 'circle', x: TOP_SPOT.x, y: TOP_SPOT.y, r: 18, label: '爬上平台',
       live: () => st.phase === 'rope' && st.top,
       act: climbTop,
     });
 
     // 台阶
     STEP_TOP.forEach((top, i) => add({
-      id: 'sp' + i, shape: 'circle', x: STEP_MARK(i), y: top - 44, r: 17, label: '上一级',
+      id: 'sp' + i, shape: 'circle', x: STEP_MARK(i), y: top - 44, ground: top, r: 17, label: '上一级',
       live: () => st.phase === 'stairs' && st.intern === i,
       act: () => step(i),
     }));
@@ -587,9 +596,9 @@
       t: 'do', fn: () => {
         if (i < 2) { st.edu = i + 1; tip('再点下一个绳结'); }
         else {
-          st.top = true;                 // 绳子尽头那个圈亮起来
-          st.topFocus = true;            // 镜头上移，保证圆圈不会跑出视口
-          tip('这一段看完了 —— 点绳子尽头那个圈，爬上平台');
+          st.top = true;                 // 绳子顶端那个圈亮起来
+          st.topFocus = true;            // 镜头下移，把平台地面和上面的圈一起露出来
+          tip('这一段看完了 —— 点绳子顶端的圆圈，爬上平台');
         }
       }
     });
@@ -1224,15 +1233,22 @@
     paintChapters();
   }
 
-  /* 当前镜头的竖向锚点。最后一个绳顶热点激活后，额外把小猫往画面下方放，
-     让 TOP_SPOT 至少落在顶栏下方 TOP_REVEAL_PX 的位置。点击后 focus 保持到
-     爬上平台，因此不会在圆圈消失的瞬间突然跳回原机位。 */
+  /* 当前镜头的竖向锚点。最后一个热点激活后，把小猫往画面下方放，
+     让绳顶的 TOP_SPOT 落在顶栏下方 TOP_REVEAL_PX 的位置。
+     点击后 focus 保持到爬上平台：爬的过程中锚点按爬过的比例从起始机位
+     线性滑到 GROUND_A —— 平台地面跟着往下落，正好在小猫踩上去那一刻落到
+     平时的地面位置，所以到顶后镜头不会再追一大截。 */
   function targetCameraAnchor() {
     const up = clamp((groundAt(cat.x) - cat.y) / (CLIMB_R * viewH), 0, 1);
     let want = GROUND_A + (ROPE_A - GROUND_A) * up;
     if (st.topFocus) {
-      const reveal = (cat.y - TOP_SPOT + TOP_REVEAL_PX / SCALE) / viewH;
-      want = Math.max(want, clamp(reveal, ROPE_A, .92));
+      const reveal = (px) => (EDU_DEST(2) - TOP_SPOT.y + px / SCALE) / viewH;
+      const card = document.getElementById('ed2');
+      const below = EDU_TOP(2) + (card ? card.offsetHeight : 0) - EDU_DEST(2);   // 卡片底边比小猫脚低多少
+      const fitCard = 1 - (below + CARD_PAD_PX / SCALE) / viewH;
+      const start = clamp(fitCard, reveal(TOP_MIN_PX), reveal(TOP_REVEAL_PX));
+      const p = clamp((EDU_DEST(2) - cat.y) / TOP_GAP, 0, 1);
+      want = clamp(start + (GROUND_A - start) * p, ROPE_A, .92);
     }
     return want;
   }
